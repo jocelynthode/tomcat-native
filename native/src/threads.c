@@ -79,6 +79,11 @@ static unsigned long ssl_thread_id(void)
 #endif
 }
 
+static void ssl_set_thread_id(CRYPTO_THREADID *id)
+{
+    CRYPTO_THREADID_set_numeric(id, ssl_thread_id());
+}
+
 /*
  * Dynamic lock creation callback
  */
@@ -156,9 +161,7 @@ void ssl_thread_setup()
 #endif
     }
 
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
-    CRYPTO_set_id_callback(ssl_thread_id);
-#endif
+    CRYPTO_THREADID_set_callback(ssl_set_thread_id);
     CRYPTO_set_locking_callback(ssl_thread_lock);
 
     /* Set up dynamic locking scaffolding for OpenSSL to use at its
@@ -173,9 +176,7 @@ void ssl_thread_setup()
 tcn_status_t ssl_thread_cleanup()
 {
     CRYPTO_set_locking_callback(NULL);
-    #if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
-    CRYPTO_set_id_callback(NULL);
-    #endif
+    CRYPTO_THREADID_set_callback(NULL);
     CRYPTO_set_dynlock_create_callback(NULL);
     CRYPTO_set_dynlock_lock_callback(NULL);
     CRYPTO_set_dynlock_destroy_callback(NULL);
