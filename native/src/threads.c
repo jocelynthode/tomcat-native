@@ -26,15 +26,16 @@ static HANDLE* ssl_lock_cs;
 struct CRYPTO_dynlock_value = todo;
 #else
 #define ssl_lock_type pthread_mutex_t
-static pthread_mutex_t* ssl_lock_cs;
+static pthread_mutex_t* ssl_lock_cs; /* Useless if OpenSSL > 1.1.0 */
 struct CRYPTO_dynlock_value {
     pthread_mutex_t mutex;
 };
 #endif
 
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 /*The number of mutexes to create */
 static int ssl_lock_num_locks;
-
 
 /*TODO use agnostic lock instead of pthread in code */
 
@@ -58,6 +59,7 @@ static void ssl_thread_lock(int mode, int type,
         }
     }
 }
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
 static unsigned long ssl_thread_id(void)
 {
@@ -90,11 +92,16 @@ static void ssl_set_thread_id(CRYPTO_THREADID *id)
 static struct CRYPTO_dynlock_value *ssl_dyn_create_function(const char *file,
                                                      int line)
 {
+
     struct CRYPTO_dynlock_value *value;
+    value = malloc(sizeof(*value));
+
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
+
     #ifdef WIN32
     todo
     #else
-        value = malloc(sizeof(*value));
+
         if(value == NULL) {
             printf("Failed to allocate memory for mutex");
             return NULL;
@@ -105,13 +112,15 @@ static struct CRYPTO_dynlock_value *ssl_dyn_create_function(const char *file,
                 return NULL;
         }
     #endif
+
+    #endif /*OPENSSL_VERSION_NUMBER < 0x10100000L*/
     return value;
 }
 
 /*
  * Dynamic locking and unlocking function
  */
-
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 static void ssl_dyn_lock_function(int mode, struct CRYPTO_dynlock_value *l,
                            const char *file, int line)
 {
@@ -131,12 +140,15 @@ static void ssl_dyn_lock_function(int mode, struct CRYPTO_dynlock_value *l,
     }
 }
 
+#endif /*OPENSSL_VERSION_NUMBER < 0x10100000L*/
+
 /*
  * Dynamic lock destruction callback
  */
 static void ssl_dyn_destroy_function(struct CRYPTO_dynlock_value *l,
                           const char *file, int line)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 
 #ifdef WIN32
             todo
@@ -144,41 +156,56 @@ static void ssl_dyn_destroy_function(struct CRYPTO_dynlock_value *l,
     pthread_mutex_destroy(&(l->mutex));
     free(l);
 #endif
+
+#endif /*OPENSSL_VERSION_NUMBER < 0x10100000L*/
 }
 
 
 void ssl_thread_setup()
 {
     int i;
+
+    CRYPTO_THREADID_set_callback(ssl_set_thread_id);
+
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
+
     ssl_lock_num_locks = CRYPTO_num_locks();
     ssl_lock_cs = malloc(ssl_lock_num_locks * sizeof(ssl_lock_type));
 
     for (i = 0; i < ssl_lock_num_locks; i++) {
-#ifdef WINDOWS
+        #ifdef WINDOWS
         todo
-#else
-         pthread_mutex_init(&ssl_lock_cs[i], 0);
-#endif
+        #else
+        pthread_mutex_init(&ssl_lock_cs[i], 0);
+        #endif
     }
 
     CRYPTO_THREADID_set_callback(ssl_set_thread_id);
     CRYPTO_set_locking_callback(ssl_thread_lock);
 
+    #endif /*OPENSSL_VERSION_NUMBER < 0x10100000L*/
+
     /* Set up dynamic locking scaffolding for OpenSSL to use at its
      * convenience.
      */
     CRYPTO_set_dynlock_create_callback(ssl_dyn_create_function);
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
     CRYPTO_set_dynlock_lock_callback(ssl_dyn_lock_function);
+    #endif
     CRYPTO_set_dynlock_destroy_callback(ssl_dyn_destroy_function);
 }
 
 
 tcn_status_t ssl_thread_cleanup()
 {
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
     CRYPTO_set_locking_callback(NULL);
+    #endif
     CRYPTO_THREADID_set_callback(NULL);
     CRYPTO_set_dynlock_create_callback(NULL);
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
     CRYPTO_set_dynlock_lock_callback(NULL);
+    #endif
     CRYPTO_set_dynlock_destroy_callback(NULL);
 
     /* Let the registered mutex cleanups do their own thing
