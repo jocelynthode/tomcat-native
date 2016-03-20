@@ -141,6 +141,9 @@ static tcn_ssl_conn_t *ssl_create(JNIEnv *env, tcn_ssl_ctxt_t *ctx, apr_pool_t *
 
     SSL_set_app_data(ssl, (void *)con);
 
+    /* store for later usage in SSL_callback_SSL_verify */
+    SSL_set_app_data2(ssl, ctx);
+
     if (ctx->mode) {
         /*
          *  Configure callbacks for SSL connection
@@ -358,7 +361,9 @@ TCN_IMPLEMENT_CALL(jint, SSLSocket, handshake)(TCN_STDARGS, jlong sock)
         /*
         * Check for failed client authentication
         */
-        if ((vr = SSL_get_verify_result(con->ssl)) != X509_V_OK) {
+        if (con->ctx->verify_mode != SSL_VERIFY_NONE &&
+	    (vr = SSL_get_verify_result(con->ssl)) != X509_V_OK) {
+
             if (SSL_VERIFY_ERROR_IS_OPTIONAL(vr) &&
                 con->ctx->verify_mode == SSL_CVERIFY_OPTIONAL_NO_CA) {
                 /* TODO: Log optionalNoCA */
@@ -645,36 +650,6 @@ TCN_IMPLEMENT_CALL(jint, SSLSocket, renegotiate)(TCN_STDARGS,
 #endif
         return APR_EGENERAL;
     }
-#if OPENSSL_VERSION_NUMBER < 0x10002000L
-#if OPENSSL_VERSION_NUMBER >= 0x1000100fL
-    SSL_set_state(con->ssl, SSL_ST_ACCEPT);
-#else
-    con->ssl->state = SSL_ST_ACCEPT;
-#endif
-
-    apr_socket_timeout_get(con->sock, &timeout);
-    ecode = SSL_ERROR_WANT_READ;
-    while (ecode == SSL_ERROR_WANT_READ) {
-        retVal = SSL_do_handshake(con->ssl);
-        if (retVal <= 0) {
-            ecode = SSL_get_error(con->ssl, retVal);
-            if (ecode == SSL_ERROR_WANT_READ) {
-                if ((rv = wait_for_io_or_timeout(con, ecode, timeout)) != APR_SUCCESS)
-                    return rv; /* Can't wait */
-                continue; /* It should be ok now */
-            }
-            else
-                return APR_EGENERAL;
-        } else
-            break;
-    }
-    con->reneg_state = RENEG_REJECT;
-
-    if (SSL_get_state(con->ssl) != SSL_ST_OK) {
-        return APR_EGENERAL;
-    }
-#endif
-
     return APR_SUCCESS;
 }
 
@@ -705,6 +680,26 @@ TCN_IMPLEMENT_CALL(void, SSLSocket, setVerify)(TCN_STDARGS,
     SSL_set_verify(con->ssl, verify, NULL);
 }
 
+TCN_IMPLEMENT_CALL(jint, SSLSocket, getALPN)(TCN_STDARGS, jlong sock, jbyteArray buf)
+{
+    const unsigned char *alpn;
+    unsigned alpn_len;
+    int len;
+    tcn_socket_t *s = J2P(sock, tcn_socket_t *);
+    tcn_ssl_conn_t *tcssl = (tcn_ssl_conn_t *)s->opaque;
+    int bufLen = (*e)->GetArrayLength(e, buf);
+
+    SSL_get0_alpn_selected(tcssl->ssl, &alpn, &alpn_len);
+
+    if (alpn_len == 0 || bufLen < alpn_len) {
+        return 0;
+    }
+    len = (int)alpn_len;
+    (*e)->SetByteArrayRegion(e, buf, 0, len, (jbyte *)alpn);
+
+    return len;
+}
+
 #else
 /* OpenSSL is not supported.
  * Create empty stubs.
@@ -731,6 +726,13 @@ TCN_IMPLEMENT_CALL(jint, SSLSocket, renegotiate)(TCN_STDARGS,
 {
     UNREFERENCED_STDARGS;
     UNREFERENCED(sock);
+    return (jint)APR_ENOTIMPL;
+}
+
+TCN_IMPLEMENT_CALL(jint, SSLSocket, getALPN)(TCN_STDARGS, jlong sock, jbyteArray buf)
+{
+    UNREFERENCED(sock);
+    UNREFERENCED(buf);
     return (jint)APR_ENOTIMPL;
 }
 

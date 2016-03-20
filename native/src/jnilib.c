@@ -19,6 +19,7 @@
 #include "apr_file_io.h"
 #include "apr_mmap.h"
 #include "apr_atomic.h"
+#include "apr_poll.h"
 
 #include "tcn_version.h"
 
@@ -54,12 +55,12 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
     tcn_global_vm = vm;
     env           = (JNIEnv *)ppe;
     /* Before doing anything else check if we have a valid
-     * APR version. We need version 1.2.1 as minimum.
+     * APR version. We need version 1.4.3 as minimum.
      */
     apr_version(&apv);
     apvn = apv.major * 1000 + apv.minor * 100 + apv.patch;
-    if (apvn < 1201) {
-        tcn_Throw(env, "Unsupported APR version %s: this tcnative requires at least 1.2.1",
+    if (apvn < 1403) {
+        tcn_Throw(env, "Unsupported APR version %s: this tcnative requires at least 1.4.3",
                   apr_version_string());
         return JNI_ERR;
     }
@@ -407,6 +408,11 @@ TCN_IMPLEMENT_CALL(jboolean, Library, has)(TCN_STDARGS, jint what)
         break;
         case 20:
 #if APR_O_NONBLOCK_INHERITED
+            rv = JNI_TRUE;
+#endif
+        break;
+        case 21:
+#if defined(APR_POLLSET_WAKEABLE)
             rv = JNI_TRUE;
 #endif
         break;

@@ -31,446 +31,140 @@
 
 <section name="Preface">
   <p>
-  This is the Changelog for Tomcat Native. This changelog
-  does not contain all updates and fixes to the Tomcat Native (yet).
-  It should contain fixes made only after December 19th 2007, when the
-  new documentation project for Tomcat Native was started.
+  This is the Changelog for Tomcat Native 1.2.
   </p>
 </section>
-<section name="Changes between 1.1.34 and 1.1.35">
+<section name="Changes in 1.2.5">
   <changelog>
+    <update>
+      Enable OpenSSL version check in <code>configure</code> by
+      default. It can be turned off using
+      <code>--disable-openssl-version-check</code>. (rjung)
+    </update>
     <fix>
       <bug>59024</bug>: Native function <code>versionString()</code> and
       for OpenSSL 1.1.0 also <code>version()</code> (both in in ssl.c) now
       return the OpenSSL run time version, not the compile time version.
       (rjung)
     </fix>
+    <scode>
+      Track changes in the OpenSSL master branch so it is possible to build
+      Tomcat Native with that branch. (billbarker)
+    </scode>
   </changelog>
 </section>
-<section name="Changes between 1.1.33 and 1.1.34">
+<section name="Changes in 1.2.4">
   <changelog>
-    <update>
-      Unconditionally disable export Ciphers. Use the
-      configure flag --enable-insecure-export-ciphers
-      for a custom build supporting those insecure ciphers.
-      (rjung)
-    </update>
-    <update>
-      Improve ephemeral key handling for DH and ECDH.
-      Parameter strength is by default derived from the
-      certificate key strength. It can be overwritten
-      by embedding custom parameters in the certificate
-      file configured with <code>SSLCertificateFile</code>. (rjung)
-    </update>
-    <update>
-      The APIs SSL.generateRSATempKey() and SSL.loadDSATempKey()
-      are no longer supported. (rjung)
-    </update>
-    <update>
-      Require minimum version 0.9.8m of OpenSSL. (rjung)
-    </update>
     <fix>
-      Use APR pool pre-cleanup API if available to reduce
-      possibility of JVM core on shutdown. (mturk, rjung)
+      SSL.getHandshakeCount(), which was unused, now returns the handshake
+      completed count rather than the handshake started count. (remm)
+    </fix>
+  </changelog>
+</section>
+<section name="Changes in 1.2.3">
+  <changelog>
+    <fix>
+      Remove Java classes that do not have C implementation code
+      for their native methods in the current library. They were
+      used for NPN support which is superseded by ALPN support
+      in the current code. (kkolinko)
+    </fix>
+    <fix>
+      Fix typo in declaration of a stub method used when the library is
+      compiled without OpenSSL support. (kkolinko)
+    </fix>
+    <fix>
+      Fix the signature of the implementation of the native SSL method
+      newSSL() in the case when OPENSSL is not available. (rjung)
+    </fix>
+    <fix>
+      Fix the signature of the implementation of the native SSLSocket
+      method getInfoB() to return jbyteArray instead of jobject.
+      This is consistent with what it actually returns and how
+      the native Java method is declared. (rjung)
     </fix>
     <add>
-      Add feature check for APR pre-cleanup API. (mturk, rjung)
+      Add support for using Java keystores for certificates and keys. (jfclere)
     </add>
+    <scode>
+      Remove code that performs a read after a renegotiation that appears to be
+      unnecessary with OpenSSL 1.0.2. (billbarker)
+    </scode>
+    <add>
+      Expose <code>SSL_renegotiate</code> to the Java API. (remm)
+    </add>
+  </changelog>
+</section>
+<section name="Changes in 1.2.2">
+  <changelog>
     <fix>
-      Don't destroy pools explicitly if we are inside an
-      apr_terminate call. (mturk, rjung)
+      Fix broken debug and maintainer mode build. (rjung)
     </fix>
     <fix>
-      Fix a small memory leak if Socket.recv() is used with
-      big buffers and recv() gets an error. (costin, rjung)
+      Forward port additional fixes to the OpenSSL I/O to align it with
+      non-OpenSSL I/O. (markt)
     </fix>
+  </changelog>
+</section>
+<section name="Changes in 1.2.1">
+  <changelog>
     <fix>
-      Pass back error to JVM if a threadsafe poller should be
-      created but the underlying APR library was build without
-      thread support. (costin, rjung)
-    </fix>
-    <fix>
-      Fix compilation failures with master branch of OpenSSL. Replace access
-      to OpenSSL internals by accessor functions. (billbarker, rjung)
-    </fix>
-    <fix>
-      Let OpenSSL master handle thread IDs itself. (billbarker)
+      <bug>58566</bug>: Enable Tomcat Native 1.2.x to work with Tomcat releases
+      that do not have the necessary Java code to support SNI. (markt)
     </fix>
     <update>
       Minor rework of "buildconf" script. (rjung)
     </update>
     <fix>
-      Fix APR dependency version expression and requirement expression in
-      RPM spec file. (rjung)
+      Fix APR dependency version expression in RPM spec file. (rjung)
     </fix>
-    <update>
-      Try to make the changelog.xml served by SVN-HTTP viewable in a browser
-      by adding a stylesheet reference. (kpreisser, rjung)
-    </update>
-    <scode>
-      Remove code that performs a read after a renegotiation that appears to be
-      unnecessary with OpenSSL 1.0.2. (billbarker)
-    </scode>
+    <fix>
+      Fix major library version number in Windows build files, RPM spec file
+      and build description. (rjung)
+    </fix>
+    <fix>
+      Remove files "KEYS" and "download_deps.sh" from Windows (zip)
+      source distribution. (rjung)
+    </fix>
+    <fix>
+      Fix "unused variable" compiler warning. (rjung)
+    </fix>
   </changelog>
 </section>
-<section name="Changes between 1.1.32 and 1.1.33">
+<section name="Changes in 1.2.0">
   <changelog>
-    <fix>
-      Fix compilation failures with master branch of OpenSSL. Replace access
-      to OpenSSL internals by accessor functions. (rjung/kkolinko)
-    </fix>
-    <fix>
-      Fix a zero-boundary-check compiler warning and simplify code in the
-      process. (rjung)
-    </fix>
-    <fix>
-      Remove superfluous semicolons after close-braces to eliminate compiler
-      warnings. (schultz)
-    </fix>
-    <fix>
-      <bug>57653</bug>: Fix crash when multiple events for same socket are
-      returned via separate apr_pollfd_t structures. (markt)
-    </fix>
-    <fix>
-      Enable building with OpenSSL 1.0.2 onwards. (billbarker)
-    </fix>
+    <add>
+      Add support for TLS extension ALPN. (markt)
+    </add>
+    <add>
+      Add support for TLS extension SNI (Server Name Indication).
+      (markt)
+    </add>
+    <add>
+      Add support for OpenSSL BIO. (jfclere)
+    </add>
+    <add>
+      Support wakeable pollsets and add Poll.interrupt() API.
+      (mturk)
+    </add>
+    <add>
+      Add Pool.unmanaged() API. (mturk)
+    </add>
     <update>
-      Use OpenSSL 1.0.1m with Windows binaries. (markt)
+      APIs SSL.generateRSATempKey() and SSL.loadDSATempKey()
+      have been removed. (rjung)
     </update>
-  </changelog>
-</section>
-<section name="Changes between 1.1.31 and 1.1.32">
-  <changelog>
-    <fix>
-      <bug>53952</bug>: Add support for TLSv1.2 and TLSv1.1.
-      Patch provided by Marcel &#352;ebek. (schultz)
-    </fix>
-    <fix>
-      <bug>56844</bug>: Use OpenSSL 1.0.1j with Windows binaries. (markt)
-    </fix>
     <update>
-      Use APR 1.5.1 with Windows binaries (markt)
+      The minimum required APR version is 1.4.3.
+    </update>
+    <update>
+      The minimum required OpenSSL version is 1.0.2.
     </update>
   </changelog>
 </section>
-<section name="Changes between 1.1.30 and 1.1.31">
-  <changelog>
-    <fix>
-      <bug>55938</bug>: Fix "Dereference of null pointer" issues in rarely
-      used methods in ssl.c. Fix possible memory leak in Socket.sendto().
-      The issues were identified with clang-analyzer. (kkolinko)
-    </fix>
-    <fix>
-      <bug>56396</bug>: Do not create RSA keys shorter the 1024 bits
-      if inside FIPS mode. (mturk)
-    </fix>
-    <fix>
-      <bug>56423</bug>: Implement stubs for methods fipsModeGet, fipsModeSet
-      when library is compiled without OpenSSL. (kkolinko)
-    </fix>
-    <fix>
-      <bug>56596</bug>: Use OpenSSL 1.0.1h with Windows binaries. (markt)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.29 and 1.1.30">
-  <changelog>
-    <fix>
-      <bug>56363</bug>: Use OpenSSL 1.0.1g with Windows binaries. (mturk)
-    </fix>      
-    <fix>
-      <bug>55915</bug>: Apply Mike Noordermeer's patch for ECDHE support. (mturk)
-    </fix>
-    <fix>
-      <bug>55663</bug>: Minor correction to the wording of the NOTICE file
-      to align it with the <a
-      href="http://www.apache.org/legal/src-headers.html#notice">requirements
-      for NOTICE files</a>. (kkolinko)
-    </fix>
-    <fix>
-      <bug>56027</bug>: Partial fix includes new <code>fipsModeGet</code>
-      function to get the current state of OpenSSL FIPS mode.
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.28 and 1.1.29">
-  <changelog>
-    <fix>
-      Change return code when removing a socket from a poller, that was
-      actually not in the poller from APR_SUCCESS to APR_NOTFOUND. (rjung)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.27 and 1.1.28">
-  <changelog>
-    <update>
-      Java classes in package org.apache.tomcat.jni are now taken
-      from Tomcat trunk using svn:externals. (rjung)
-    </update>
-    <update>
-      Minimum supported APR version is now again 1.2.1. Version 1.3.0
-      of APR improves performance. (rjung)
-    </update>
-    <fix>
-      <bug>29422</bug>: Fixed double-free in <code>ssl_ocsp_request</code>.
-      Patch provided by Aristotelis. (schultz)
-    </fix>
-    <fix>
-      <bug>51655</bug>: Added a decent description of what tcnative actually is.
-      (schultz)
-    </fix>
-    <fix>
-      <bug>51813</bug>: Add NULL-checking for <code>s-&gt;net</code> to
-      avoid SIGSEGV in situations where it appears a socket has been recycled.
-      (schultz)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.26 and 1.1.27">
-  <changelog>
-    <fix>
-      <bug>54513</bug>: Fix regression in pollset return value. (mturk)
-    </fix>
-    <fix>
-      Switch CPU information on Solaris from milliseconds to
-      microseconds. Make consistent with OS.java and Linux impl. (rjung)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.25 and 1.1.26 (not released)">
-  <changelog>
-    <fix>
-      <bug>54468</bug>: Fix FIPS mode for listeners when using OpenSSL 1.0.1c
-      and later; resolves 'Low level API call to digest MD5 forbidden in FIPS
-      mode!' errors. (wrowe)
-    </fix>
-    <update>
-      Add clearOptions function to allow access to OpenSSL's
-      SSL_CTX_clear_options function. (schultz)
-    </update>
-  </changelog>
-</section>
-<section name="Changes between 1.1.24 and 1.1.25 (not released)">
-  <changelog>
-    <update>
-      Minimum supported APR version is now 1.3.0. (mturk)
-    </update>
-    <fix>
-      <bug>52856</bug>: Fix high CPU usage when client changes IP address or
-      has high latency. (mturk)
-    </fix>
-    <update>
-      Add CPU information to OS info for Linux.
-      This was already available under Windows and Solaris. (rjung)
-    </update>
-    <fix>
-      <bug>53969</bug>: ssl.c::hasOp could only check for
-      SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION. Now it can check
-      for any SSL_OP_* available at compile-time. (schultz)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.23 and 1.1.24">
-  <changelog>
-    <update>
-      Add support for per-socket timeouts inside poller. (markt, mturk)
-    </update>
-  </changelog>
-</section>
-<section name="Changes between 1.1.22 and 1.1.23">
-  <changelog>
-    <update>
-      <bug>45392</bug>: Add support for OCSP verification. Based upon a patch
-      from Aristotelis. (mturk)
-    </update>
-    <fix>
-      <bug>52119</bug>: Autodetect Diablo JDK on FreeBSD and Java7+. Based upon a patch
-      from Michael Osipov. (mturk)
-    </fix>
-    <fix>
-      <bug>52717</bug>: Set scope_id for IPv6 addresses if provided. (mturk)
-    </fix>
-    <update>
-      <bug>50570</bug>: Allow explicit use of FIPS mode in APR lifecycle
-      listener (native support only in this update; Java support to follow).
-      Based upon a patch from Chris Beckey. (schultz)
-    </update>
-  </changelog>
-</section>
-<section name="Changes between 1.1.21 and 1.1.22">
-  <changelog>
-    <fix>
-      Arrange release packaging script. (jfclere).
-    </fix>
-    <fix>
-      Fix typos in the changelog. (markt).
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.20 and 1.1.21 (not released)">
-  <changelog>
-    <fix>
-      <bug>50394</bug>: InternalAprInputBuffer.fill() doesn't deal correctly with EOF. (jfclere)
-    </fix>
-    <fix>
-      Support arbitrary protocol combinations of SSLv2, SSLv3 and TLSv1. (rjung)
-    </fix>
-    <fix>
-      <bug>51437</bug>: Try loading certificate in DER format if PEM was invalid. (mturk)
-    </fix>
-    <fix>
-      <bug>49557</bug>: index error in the loop to get the env info in the proc.create function. (kkolinko, jfclere)
-    </fix>
-    <fix>
-      <bug>49851</bug>: JNI Registry.deleteKey and Registry.deleteValue corrupt Windows registry. (jfclere)
-    </fix>
-    <fix>
-      <bug>48253</bug>: adding dynamic locking callbacks for openssl engines. (jfclere)
-    </fix>
-    <update>
-      Make the non blocking write really no blocking. (jfclere)
-    </update>
-    <update>
-      Add support for unsafe legacy renegotiation. (mturk)
-    </update>
-  </changelog>
-</section>
-<section name="Changes between 1.1.19 and 1.1.20">
-  <changelog>
-    <fix>
-      <bug>48584</bug>: Prevent crashing JVM on shutdown. (mturk)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.18 and 1.1.19">
-  <changelog>
-    <fix>
-      Update windows resource files to correct version. (mturk)
-    </fix>
-    <fix>
-      <bug>48129</bug>: Fix build with OpenSSL 1.0.0-beta3.
-      Patch provided by Tomas Mraz. (mturk, rjung)
-    </fix>
-    <update>
-      Add detection of the Mac OS X JVM. (rjung)
-    </update>
-  </changelog>
-</section>
-<section name="Changes between 1.1.17 and 1.1.18">
-  <changelog>
-    <fix>
-      Fix CVE-2009-3555 SSL-Man-In-The-Middle attack. (mturk)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.16 and 1.1.17">
-  <changelog>
-    <update>
-      Arrange build after svn reorganisation (rjung)
-    </update>
-    <fix>
-      <bug>47852</bug>: Fix some Javadoc errors. Patch provided by Sebb. (rjung)
-    </fix>
-    <fix>
-      <bug>46950</bug>: Fix SSL renegotiation in combination with client
-      certificates. The complete solution also needs a fix in Tomcat's Java code. (markt)
-    </fix>
-    <fix>
-      Align method names and signatures of native C code and java code. (markt, rjung)
-    </fix>
-    <fix>
-      <bug>42728</bug>: Remove memory leak. (markt)
-    </fix>
-    <fix>
-      <bug>46457</bug>: Fix use of multicast. (markt)
-    </fix>
-    <fix>
-      Fix API name for recvfrom (mturk)
-    </fix>
-    <fix>
-      Allow building against APR 1.3 (mturk)
-    </fix>
-    <fix>
-      Improve fix for <bug>43327</bug> with better handling for IPv6
-      addresses (markt)
-    </fix>
-  </changelog>
-</section>
-
-<section name="Changes between 1.1.15 and 1.1.16">
-  <changelog>
-    <fix>
-      Fix API name for recvfrom (mturk)
-    </fix>
-    <fix>
-      Allow building against APR 1.3 (mturk)
-    </fix>
-    <fix>
-      Improve fix for <bug>43327</bug> with better handling for IPv6
-      addresses (markt)
-    </fix>
-  </changelog>
-</section>
-
-<section name="Changes between 1.1.14 and 1.1.15">
-  <changelog>
-    <fix>
-      <bug>43327</bug>: Socket bind fail because mixing IPv4/IPv6 (markt, jfclere)
-    </fix>
-    <fix>
-      <bug>44864</bug>: Use additional check for SSL verify like
-      with mod_ssl for SSLVerifyClient=optionalNoCA. (mturk)
-    </fix>
-  </changelog>
-</section>
-
-<section name="Changes between 1.1.13 and 1.1.14">
-  <changelog>
-    <fix>
-      <bug>45071</bug>: Reset ttl when Poll.pool remove is false.
-      Additional patch was provided by Alex Barclay. (mturk)
-    </fix>
-    <fix>
-      Fix optGet that was always throwing exceptions. (jfclere)
-    </fix>
-    <fix>
-      Fix optSet don't throw exception as JAVA prototype doesn't. (jfclere)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.12 and 1.1.13">
-  <changelog>
-    <fix>
-      IFS problem in native/build/tcnative.m4 (rjung)
-    </fix>
-    <fix>
-      Wrong gcc link flag in native/build/tcnative.m4 (rjung)
-    </fix>
-  </changelog>
-</section>
-<section name="Changes between 1.1.11 and 1.1.12">
-  <changelog>
-    <update>
-      Add support of J9VM based JVM. (jfclere)
-    </update>
-    <update>
-      Arrange licence in source files. (markt)
-    </update>
-    <update>
-      Add two new 'immediate' methods for sending the data.
-      It is the responsibility of the Java callee to deal with
-      the returned values and retry if the error was non-fatal. (mturk)
-    </update>
-    <fix>
-      Arrange the check of openssl version. It was failing on Linux. (jfclere)
-    </fix>
-    <fix>
-      Prevent returning APR_SUCCESS when there is something wrong in ssl layer. (jfclere)
-    </fix>
-    <fix>
-      <bug>44087</bug>: Fix it. (jfclere)
-    </fix>
-  </changelog>
+<section name="Changes in 1.1.x">
+<p>Please see the <a href="../../native-1.1-doc/miscellaneous/changelog.html">1.1.x
+   changelog</a>.</p>
 </section>
 </body>
 </document>

@@ -27,14 +27,13 @@
 extern int WIN32_SSL_password_prompt(tcn_pass_cb_t *data);
 #endif
 
-#ifdef HAVE_OPENSSL_OCSP
+#ifdef HAVE_OCSP_STAPLING
 #include <openssl/bio.h>
 #include <openssl/ocsp.h>
 /* defines with the values as seen by the asn1parse -dump openssl command */
 #define ASN1_SEQUENCE 0x30
 #define ASN1_OID      0x06
 #define ASN1_STRING   0x86
-#pragma message("Using OCSP")
 static int ssl_verify_OCSP(int ok, X509_STORE_CTX *ctx);
 static int ssl_ocsp_request(X509 *cert, X509 *issuer);
 #endif
@@ -52,8 +51,9 @@ static int ssl_ocsp_request(X509 *cert, X509 *issuer);
  * SSL_get_ex_new_index() is called, so we _must_ do this at startup.
  */
 static int SSL_app_data2_idx = -1;
+static int SSL_app_data3_idx = -1;
 
-void SSL_init_app_data2_idx(void)
+void SSL_init_app_data2_3_idx(void)
 {
     int i;
 
@@ -68,6 +68,16 @@ void SSL_init_app_data2_idx(void)
                                  "Second Application Data for SSL",
                                  NULL, NULL, NULL);
     }
+
+    if (SSL_app_data3_idx > -1) {
+        return;
+    }
+
+    SSL_app_data3_idx =
+            SSL_get_ex_new_index(0,
+                                 "Third Application Data for SSL",
+                                  NULL, NULL, NULL);
+
 }
 
 void *SSL_get_app_data2(SSL *ssl)
@@ -79,6 +89,17 @@ void SSL_set_app_data2(SSL *ssl, void *arg)
 {
     SSL_set_ex_data(ssl, SSL_app_data2_idx, (char *)arg);
     return;
+}
+
+
+void *SSL_get_app_data3(const SSL *ssl)
+{
+    return SSL_get_ex_data(ssl, SSL_app_data3_idx);
+}
+
+void SSL_set_app_data3(SSL *ssl, void *arg)
+{
+    SSL_set_ex_data(ssl, SSL_app_data3_idx, arg);
 }
 
 /* Simple echo password prompting */
@@ -197,6 +218,7 @@ DH *SSL_callback_tmp_DH(SSL *ssl, int export, int keylen)
 #else
     int type = pkey != NULL ? EVP_PKEY_base_id(pkey) : EVP_PKEY_NONE;
 #endif
+
     /*
      * OpenSSL will call us with either keylen == 512 or keylen == 1024
      * (see the definition of SSL_EXPORT_PKEYLENGTH in ssl_locl.h).
@@ -248,14 +270,7 @@ int SSL_CTX_use_certificate_chain(SSL_CTX *ctx, const char *file,
     }
 
     /* free a perhaps already configured extra chain */
-#if OPENSSL_VERSION_NUMBER >= 0x1000100fL
     SSL_CTX_clear_extra_chain_certs(ctx);
-#else
-    if (ctx->extra_certs != NULL) {
-        sk_X509_pop_free(ctx->extra_certs, X509_free);
-        ctx->extra_certs = NULL;
-    }
-#endif
 
     /* create new extra chain by loading the certs */
     n = 0;
@@ -461,7 +476,7 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
         SSL_set_verify_result(ssl, X509_V_OK);
     }
 
-#ifdef HAVE_OPENSSL_OCSP
+#ifdef HAVE_OCSP_STAPLING
     /* First perform OCSP validation if possible */
     if (ok) {
         /* If there was an optional verification error, it's not
@@ -561,7 +576,89 @@ void SSL_callback_handshake(const SSL *ssl, int where, int rc)
 
 }
 
-#ifdef HAVE_OPENSSL_OCSP
+int SSL_callback_next_protos(SSL *ssl, const unsigned char **data,
+                             unsigned int *len, void *arg)
+{
+    tcn_ssl_ctxt_t *ssl_ctxt = arg;
+
+    *data = ssl_ctxt->next_proto_data;
+    *len = ssl_ctxt->next_proto_len;
+
+    return SSL_TLSEXT_ERR_OK;
+}
+
+/* The code here is inspired by nghttp2
+ *
+ * See https://github.com/tatsuhiro-t/nghttp2/blob/ae0100a9abfcf3149b8d9e62aae216e946b517fb/src/shrpx_ssl.cc#L244 */
+int select_next_proto(SSL *ssl, const unsigned char **out, unsigned char *outlen,
+        const unsigned char *in, unsigned int inlen, unsigned char *supported_protos,
+        unsigned int supported_protos_len, int failure_behavior) {
+
+    unsigned int i = 0;
+    unsigned char target_proto_len;
+    const unsigned char *p;
+    const unsigned char *end;
+    const unsigned char *proto;
+    unsigned char proto_len;
+
+    while (i < supported_protos_len) {
+        target_proto_len = *supported_protos;
+        ++supported_protos;
+
+        p = in;
+        end = in + inlen;
+
+        while (p < end) {
+            proto_len = *p;
+            proto = ++p;
+
+            if (proto + proto_len <= end && target_proto_len == proto_len &&
+                    memcmp(supported_protos, proto, proto_len) == 0) {
+
+                // We found a match, so set the output and return with OK!
+                *out = proto;
+                *outlen = proto_len;
+
+                return SSL_TLSEXT_ERR_OK;
+            }
+            // Move on to the next protocol.
+            p += proto_len;
+        }
+
+        // increment len and pointers.
+        i += target_proto_len;
+        supported_protos += target_proto_len;
+    }
+
+    if (failure_behavior == SSL_SELECTOR_FAILURE_CHOOSE_MY_LAST_PROTOCOL) {
+         // There were no match but we just select our last protocol and hope the other peer support it.
+         //
+         // decrement the pointer again so the pointer points to the start of the protocol.
+         /* XXX compiler warning: 'proto_len' and 'p' may be used uninitialized in this function */
+         p -= proto_len;
+         *out = p;
+         *outlen = proto_len;
+         return SSL_TLSEXT_ERR_OK;
+    }
+    // TODO: OpenSSL currently not support to fail with fatal error. Once this changes we can also support it here.
+    //       Issue https://github.com/openssl/openssl/issues/188 has been created for this.
+    // Nothing matched so not select anything and just accept.
+    return SSL_TLSEXT_ERR_NOACK;
+}
+
+int SSL_callback_select_next_proto(SSL *ssl, unsigned char **out, unsigned char *outlen,
+                         const unsigned char *in, unsigned int inlen,
+                         void *arg) {
+    tcn_ssl_ctxt_t *ssl_ctxt = arg;
+    return select_next_proto(ssl, (const unsigned char **) out, outlen, in, inlen, ssl_ctxt->next_proto_data, ssl_ctxt->next_proto_len, ssl_ctxt->next_selector_failure_behavior);
+}
+
+int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
+        const unsigned char *in, unsigned int inlen, void *arg) {
+    tcn_ssl_ctxt_t *ssl_ctxt = arg;
+    return select_next_proto(ssl, out, outlen, in, inlen, ssl_ctxt->alpn_proto_data, ssl_ctxt->alpn_proto_len, ssl_ctxt->alpn_selector_failure_behavior);
+}
+#ifdef HAVE_OCSP_STAPLING
 
 /* Function that is used to do the OCSP verification */
 static int ssl_verify_OCSP(int ok, X509_STORE_CTX *ctx)
@@ -1068,5 +1165,5 @@ static int ssl_ocsp_request(X509 *cert, X509 *issuer)
     return OCSP_STATUS_UNKNOWN;
 }
 
-#endif /* HAS_OCSP_ENABLED */
+#endif /* HAVE_OCSP_STAPLING */
 #endif /* HAVE_OPENSSL  */

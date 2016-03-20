@@ -1,0 +1,190 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat">
+<html lang="en"><head><META http-equiv="Content-Type" content="text/html; charset=UTF-8"><link href="./images/docs-stylesheet.css" rel="stylesheet" type="text/css"><link href="./images/style.css" rel="stylesheet" type="text/css"><title>Apache Tomcat Native Library - Documentation Index</title><meta name="author" content="Jean-Frederic Clere"></head><body><div id="wrapper"><header><div id="header"><div><div><div class="logo noPrint"><a href="http://tomcat.apache.org/"><img alt="Tomcat Home" src="./images/tomcat.png"></a></div><div style="height: 1px;"></div><div class="asfLogo noPrint"><a href="http://www.apache.org/" target="_blank"><img src="./images/asf-feather.png" alt="The Apache Software Foundation" style="width: 266px; height: 83px;"></a></div><h1>Apache Tomcat Native Library</h1><div style="height: 1px;"></div><div style="clear: left;"></div></div></div></div></header><div id="middle"><div><div id="mainLeft" class="noprint"><div><nav><div><h2><strong>Links</strong></h2><ul><li><a href="index.html">Docs Home</a></li></ul></div><div><h2><strong>Miscellaneous Documentation</strong></h2><ul><li><a href="miscellaneous/changelog.html">Changelog</a></li></ul></div><div><h2><strong>News</strong></h2><ul><li><a href="news/2016.html">2016</a></li><li><a href="news/2015.html">2015</a></li><li><a href="news/2014.html">2014</a></li><li><a href="news/2013.html">2013</a></li><li><a href="news/2012.html">2012</a></li><li><a href="news/2011.html">2011</a></li><li><a href="news/2010.html">2010</a></li><li><a href="news/2009.html">2009</a></li><li><a href="news/2008.html">2008</a></li></ul></div></nav></div></div><div id="mainRight"><div id="content"><h2>Documentation Index</h2><h3 id="Introduction">Introduction</h3><div class="text">
+
+  <p>
+    The Apache Tomcat Native Library is an optional component for use with
+    Apache Tomcat that allows Tomcat to use certain native resources
+    for performance, compatibility, etc.
+  </p>
+
+  <p>
+    Specifically, the Apache Tomcat Native Library gives Tomcat access to
+    the Apache Portable Runtime (APR) library's network connection (socket)
+    implementation and random-number generator.
+    See the Apache Tomcat documentation for more information on how to
+    configure Tomcat to use the APR connector.
+  </p>
+
+  <p>
+    Features of the APR connector:
+  </p>
+  <ul>
+    <li>Non-blocking I/O for Keep-Alive requests (between requests)</li>
+    <li>Uses OpenSSL for TLS/SSL capabilities (if supported by linked APR library)</li>
+    <li>FIPS 140-2 support for TLS/SSL (if supported by linked OpenSSL library)</li>
+  </ul>
+
+
+<p>Select one of the links from the navigation menu (to the left) to drill
+down to the more detailed documentation that is available. Each available
+manual is described in more detail below.</p>
+
+</div><h3 id="Headlines">Headlines</h3><div class="text">
+<ul>
+
+<li><a href="news/2016.html#20160111">11 Jan 2016 - <b>TC-Native-1.2.4 released</b></a>
+<p>The Apache Tomcat team is proud to announce the immediate availability of
+Tomcat Native 1.2.4 Stable.</p>
+<p>
+The sources and the binaries for selected platforms are available from the
+<a href="../download-native.cgi">Download page</a>.
+</p>
+<p>
+Please see the <a href="miscellaneous/changelog.html">ChangeLog</a> for a full
+list of changes.
+</p>
+</li>
+</ul>
+</div><h3 id="Building">Building</h3><div class="text">
+<div class="subsection"><h4 id="Requirements">Requirements</h4><div class="text">
+    <p>
+      Build tc-native requires three components to be installed:
+    </p>
+      <ul>
+        <li>APR library</li>
+        <li>OpenSSL libraries</li>
+        <li>Java SE Development Kit (JDK)</li>
+      </ul>
+
+    <p>
+      In debian based Linux those dependencies could be installed by something like:
+    </p>
+    <div class="codeBox"><pre><code>apt-get install libapr1.0-dev libssl-dev</code></pre></div>
+    <p>
+      In rpm based Linux those dependencies could be installed by something like:
+    </p>
+    <div class="codeBox"><pre><code>yum install apr-devel openssl-devel</code></pre></div>
+</div></div>
+
+<div class="subsection"><h4 id="Building/UNIX">UNIX</h4><div class="text">
+  <p>
+    On all the POSIX systems (Linux, Solaris, HP-UX, AIX etc...) a well-known
+    configure and make is used to build tc-native.<br>
+    In the jni/native runs:
+  </p>
+    <div class="codeBox"><pre><code>./configure --help</code></pre></div>
+    <p>to read the description of all the parameters.</p>
+    <div class="codeBox"><pre><code>./configure --with-apr=$HOME/APR \
+            --with-java-home=$JAVA_HOME \
+            --with-ssl=$HOME/OPENSSL \
+            --prefix=$CATALINA_HOME</code></pre></div>
+  <p>
+    to create the includes and makefiles to be able to build tc-native.<br>
+    Where:<br>
+    <code>$HOME/APR</code> is something like /usr/bin/apr-1-config or the path where apr is
+    installed.<br>
+    <code>$JAVA_HOME</code> is something /home/jfclere/JAVA/jdk1.5.0_09 path to a JDK
+    installation. Any JDK should work but it is advisable to use the same
+    JVM version the JVM you use with Tomcat.<br>
+    <code>$HOME/OPENSSL</code> is the path where OpenSSL is installed.<br>
+    <code>$CATALINA_HOME</code> is the path where the produced libraries will be
+    installed. Something like $HOME/apache-tomcat-6.0.16/<br>
+    <br>
+    The configure is able to guess most of OpenSSL standard installations.
+    So most of the time the following will be enough:
+  </p>
+    <div class="codeBox"><pre><code>./configure --with-apr=/usr/bin/apr-1-config \
+            --with-java-home=/home/jfclere/JAVA/jdk1.5.0_09/ \
+            --with-ssl=yes \
+            --prefix=$CATALINA_HOME</code></pre></div>
+  <p>
+    To build the libraries and install them:
+  </p>
+  <div class="codeBox"><pre><code>make &amp;&amp; make install</code></pre></div>
+  <p>
+    The libraries will be found in $CATALINA_HOME/lib
+  </p>
+</div></div>
+
+<div class="subsection"><h4 id="Building/Windows">Windows</h4><div class="text">
+  <p>
+   Download the windows sources of tc-native and extract them.
+  </p>
+  <p>
+    Download OpenSSL sources (See <a href="http://www.openssl.org/related/binaries.html"><b>Binary Distributions</b></a>)
+    OpenSSL is a crypto software so check if you are allowed to download it. If not you can still use tc-native without SSL.
+  </p>
+  <p>
+    Download APR sources for Windows. (See <a href="http://apr.apache.org/download.cgi"><b>Download</b></a>)
+    Extract them in jni and rename the apr-1.x.y directory to apr.
+  </p>
+  <p>
+    Use MS Visual Studio to open the workspace of the APR sources and build the library (libapr).
+  </p>
+  <p>
+    Use MS Visual Studio to open the workspace of the tc-native sources, adjust the OpenSSL includes and libraries location
+    change the name of the libraries libeay32 and libssleay to libeay32MT and libssleayMT and build the tcn-native library.
+    That should create a tcnative-1.dll.
+  </p>
+</div></div>
+
+</div><h3 id="Install_and_tests">Install and tests</h3><div class="text">
+  <div class="subsection"><h4 id="Configuring_Tomcat">Configuring Tomcat</h4><div class="text">
+    <p>
+      Apache Tomcat comes with the <code>AprLifecycleListener</code> enabled
+      by default. Still, you should check your <code>conf/server.xml</code>
+      to ensure that something like the following is present, and uncommented:
+    </p>
+
+    <div class="codeBox"><pre class="wrap"><code>&lt;Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on" /&gt;</code></pre></div>
+    <p>
+      Please see the Apache Tomcat documentation for configuration specifics.
+    </p>
+  </div></div>
+
+<div class="subsection"><h4 id="Install_and_tests/UNIX">UNIX</h4><div class="text">
+  <p>
+   Edit $CATALINA_HOME/bin/setenv.sh (creating the file if necessary) and add
+   the path to the tc-native libraries to LD_LIBRARY_PATH. Something like:
+  </p>
+  <div class="codeBox"><pre><code>LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CATALINA_HOME/lib
+export LD_LIBRARY_PATH</code></pre></div>
+  <p>
+   Start tomcat and check for the messages like this ones:
+  </p>
+   <div class="codeBox"><pre class="wrap"><code>Feb 8, 2015 12:27:41 PM org.apache.catalina.core.AprLifecycleListener init
+INFO: Loaded APR based Apache Tomcat Native library 1.x.y.
+Feb 8, 2015 12:27:41 PM org.apache.catalina.core.AprLifecycleListener init
+INFO: APR capabilities: IPv6 [true], sendfile [true], accept filters [false], random [true].
+Feb 8, 2015 12:27:41 PM org.apache.coyote.http11.Http11AprProtocol init
+INFO: Initializing Coyote HTTP/1.1 on http-8080</code></pre></div>
+  <p>
+    Refer to the tomcat documentation to configure the connectors
+    (See <a href="http://tomcat.apache.org/tomcat-8.0-doc/apr.html">Tomcat 8.0.x</a>,
+    <a href="http://tomcat.apache.org/tomcat-7.0-doc/apr.html">Tomcat 7.0.x</a>
+    and <a href="http://tomcat.apache.org/tomcat-6.0-doc/apr.html">Tomcat 6.0.x</a>)
+  </p>
+</div></div>
+
+<div class="subsection"><h4 id="Install_and_tests/Windows">Windows</h4><div class="text">
+  <p>
+    Edit $CATALINA_BASE\bin\setenv.bat (creating the file if necessary) and add
+    the path to the tc-native libraries, apr and OpenSSL to PATH. For example:
+  </p>
+
+  <div class="codeBox"><pre class="wrap"><code>set PATH=%PATH;C:\cygwin\home\support\tomcat-native-current-win32-src\jni\native\Debug;C:\cygwin\home\support\tomcat-native-current-win32-src\jni\apr\Debug;C:\OpenSSL\lib\VC</code></pre></div>
+  <p>
+    Start tomcat and check for the messages like this ones:
+  </p>
+  <div class="codeBox"><pre class="wrap"><code>Feb 8, 2015 2:48:17 PM org.apache.catalina.core.AprLifecycleListener init
+INFO: Loaded APR based Apache Tomcat Native library 1.x.y.
+Feb 8, 2015 2:48:17 PM org.apache.catalina.core.AprLifecycleListener init
+INFO: APR capabilities: IPv6 [false], sendfile [true], accept filters [false], random [true].
+Feb 8, 2015 2:48:18 PM org.apache.coyote.http11.Http11AprProtocol init
+INFO: Initializing Coyote HTTP/1.1 on http-8080</code></pre></div>
+
+</div></div>
+
+</div></div></div></div></div><footer><div id="footer">
+    Copyright &copy; 2008-2016, The Apache Software Foundation
+  </div></footer></div></body></html>

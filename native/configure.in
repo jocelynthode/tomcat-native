@@ -107,9 +107,7 @@ dnl
 dnl  Find the JVM related information
 dnl
 NEED_JNI_MD=yes
-TCN_FIND_JDK
-TCN_SABLEVM
-TCN_J9VM
+TCN_FIND_JAVA
 
 dnl MAC OS X does not used include but Headers
 if test -d ${JAVA_HOME}/Headers; then
@@ -147,17 +145,6 @@ AC_ARG_ENABLE(openssl,
     no )
        use_openssl=false;
        AC_MSG_RESULT([Disabling SSL support...])
-       ;;
-  esac
-])
-
-AC_ARG_ENABLE(ocsp,
-[AS_HELP_STRING([--enable-ocsp],[Turn on OpenSSL OCSP verification support])],
-[
-  case "${enableval}" in
-    yes )
-       APR_ADDTO(CFLAGS, [-DHAVE_OPENSSL_OCSP])
-       AC_MSG_RESULT([Enabling OCSP verification support...])
        ;;
   esac
 ])
@@ -235,7 +222,7 @@ case $host in
         ;;
 esac
 
-TCN_FIND_APR_FEATURE([apr_pool_pre_cleanup_register],[POOL_PRE_CLEANUP])
+TCN_FIND_APR_FEATURE([apr_pollset_wakeup],[POLLSET_WAKEUP])
 
 AC_SUBST(TCNATIVE_EXPORT_LIBS)
 AC_SUBST(TCNATIVE_PRIV_INCLUDES)

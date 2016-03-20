@@ -26,7 +26,7 @@ Documentation
 -------------
 
 The documentation available as of the date of this release is
-included in HTML format in the jni/docs directory.
+included in HTML format in the docs directory.
 The most up-to-date documentation can be found at
 http://tomcat.apache.org/native-doc/
 
@@ -38,10 +38,10 @@ http://tomcat.apache.org/tomcat-8.0-doc/apr.html.
 Building
 --------
 
-To build the Java API. Note that Java 1.7 is required to build the Java API.
+To build the Java API. Note that Java 1.8 is required to build the Java API.
 > ant
 
-To build the native part see jni/native/BUILDING (or native/BUILDING if you have a working copy of svn).
+To build the native part see native/BUILDING.
 
 
 Running the tests

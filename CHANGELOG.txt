@@ -1,23 +1,76 @@
-  Licensed to the Apache Software Foundation (ASF) under one or more
-  contributor license agreements.  See the NOTICE file distributed with
-  this work for additional information regarding copyright ownership.
-  The ASF licenses this file to You under the Apache License, Version 2.0
-  (the "License"); you may not use this file except in compliance with
-  the License.  You may obtain a copy of the License at
+  Preface
 
-      http://www.apache.org/licenses/LICENSE-2.0
+   This is the Changelog for Tomcat Native 1.2.
 
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
+  Changes in 1.2.5
 
-TOMCAT NATIVE CHANGELOG:           -*-text-*-
-Last modified at [$Date$]
+     * Update: Enable OpenSSL version check in configure by default. It can
+       be turned off using --disable-openssl-version-check. (rjung)
+     * Fix: 59024: Native function versionString() and for OpenSSL 1.1.0 also
+       version() (both in in ssl.c) now return the OpenSSL run time version,
+       not the compile time version. (rjung)
+     * Code: Track changes in the OpenSSL master branch so it is possible to
+       build Tomcat Native with that branch. (billbarker)
 
-PLEASE DON'T WRITE IN THIS FILE BUT IN
-    xdocs/miscellaneous/changelog.xml
-AND USE
-    ./jnirelease.sh
-TO BUILD THE TEXT VERSION.
+  Changes in 1.2.4
+
+     * Fix: SSL.getHandshakeCount(), which was unused, now returns the
+       handshake completed count rather than the handshake started count.
+       (remm)
+
+  Changes in 1.2.3
+
+     * Fix: Remove Java classes that do not have C implementation code for
+       their native methods in the current library. They were used for NPN
+       support which is superseded by ALPN support in the current code.
+       (kkolinko)
+     * Fix: Fix typo in declaration of a stub method used when the library is
+       compiled without OpenSSL support. (kkolinko)
+     * Fix: Fix the signature of the implementation of the native SSL method
+       newSSL() in the case when OPENSSL is not available. (rjung)
+     * Fix: Fix the signature of the implementation of the native SSLSocket
+       method getInfoB() to return jbyteArray instead of jobject. This is
+       consistent with what it actually returns and how the native Java
+       method is declared. (rjung)
+     * Add: Add support for using Java keystores for certificates and keys.
+       (jfclere)
+     * Code: Remove code that performs a read after a renegotiation that
+       appears to be unnecessary with OpenSSL 1.0.2. (billbarker)
+     * Add: Expose SSL_renegotiate to the Java API. (remm)
+
+  Changes in 1.2.2
+
+     * Fix: Fix broken debug and maintainer mode build. (rjung)
+     * Fix: Forward port additional fixes to the OpenSSL I/O to align it with
+       non-OpenSSL I/O. (markt)
+
+  Changes in 1.2.1
+
+     * Fix: 58566: Enable Tomcat Native 1.2.x to work with Tomcat releases
+       that do not have the necessary Java code to support SNI. (markt)
+     * Update: Minor rework of "buildconf" script. (rjung)
+     * Fix: Fix APR dependency version expression in RPM spec file. (rjung)
+     * Fix: Fix major library version number in Windows build files, RPM spec
+       file and build description. (rjung)
+     * Fix: Remove files "KEYS" and "download_deps.sh" from Windows (zip)
+       source distribution. (rjung)
+     * Fix: Fix "unused variable" compiler warning. (rjung)
+
+  Changes in 1.2.0
+
+     * Add: Add support for TLS extension ALPN. (markt)
+     * Add: Add support for TLS extension SNI (Server Name Indication).
+       (markt)
+     * Add: Add support for OpenSSL BIO. (jfclere)
+     * Add: Support wakeable pollsets and add Poll.interrupt() API. (mturk)
+     * Add: Add Pool.unmanaged() API. (mturk)
+     * Update: APIs SSL.generateRSATempKey() and SSL.loadDSATempKey() have
+       been removed. (rjung)
+     * Update: The minimum required APR version is 1.4.3.
+     * Update: The minimum required OpenSSL version is 1.0.2.
+
+  Changes in 1.1.x
+
+   Please see the 1.1.x changelog.
+
+   Copyright © 2008-2016, The Apache Software Foundation

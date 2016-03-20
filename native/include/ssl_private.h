@@ -84,7 +84,6 @@
 #define SSL_PROTOCOL_TLSV1      (1<<2)
 #define SSL_PROTOCOL_TLSV1_1    (1<<3)
 #define SSL_PROTOCOL_TLSV1_2    (1<<4)
-#define SSL_PROTOCOL_ALL        (SSL_PROTOCOL_SSLV2|SSL_PROTOCOL_SSLV3|SSL_PROTOCOL_TLSV1|SSL_PROTOCOL_TLSV1_1|SSL_PROTOCOL_TLSV1_2)
 
 #define SSL_MODE_CLIENT         (0)
 #define SSL_MODE_SERVER         (1)
@@ -171,16 +170,41 @@
                                 "In order to read them you have to provide the pass phrases.\n"         \
                                 "Enter password :"
 
+#define SSL_CIPHERS_ALWAYS_DISABLED         ("!aNULL:!eNULL:!EXP:")
+
+#if defined(SSL_OP_NO_TLSv1_1)
+#define HAVE_TLSV1_1
+#endif
+
+#if defined(SSL_OP_NO_TLSv1_2)
+#define HAVE_TLSV1_2
+#endif
+
+/**
+ * The following features all depend on TLS extension support.
+ * Within this block, check again for features (not version numbers).
+ */
+#if !defined(OPENSSL_NO_TLSEXT) && defined(SSL_set_tlsext_host_name)
+
+#define HAVE_TLSEXT
+
+/* ECC */
+#if !defined(OPENSSL_NO_EC) && defined(TLSEXT_ECPOINTFORMAT_uncompressed)
+#define HAVE_ECC
+#endif
+
+/* OCSP stapling */
+#if !defined(OPENSSL_NO_OCSP) && defined(SSL_CTX_set_tlsext_status_cb)
+#define HAVE_OCSP_STAPLING
 #define OCSP_STATUS_OK        0
 #define OCSP_STATUS_REVOKED   1
 #define OCSP_STATUS_UNKNOWN   2
-
-#define SSL_CIPHERS_ALWAYS_DISABLED         ("!aNULL:!eNULL:!EXP:")
-
-/* ECC: make sure we have at least 1.0.0 */
-#if !defined(OPENSSL_NO_EC) && defined(TLSEXT_ECPOINTFORMAT_uncompressed)
-#define HAVE_ECC              1
 #endif
+
+#endif /* !defined(OPENSSL_NO_TLSEXT) && defined(SSL_set_tlsext_host_name) */
+
+#define MAX_ALPN_NPN_PROTO_SIZE 65535
+#define SSL_SELECTOR_FAILURE_CHOOSE_MY_LAST_PROTOCOL            1
 
 typedef struct {
     /* client can have any number of cert/key pairs */
@@ -227,6 +251,31 @@ struct tcn_ssl_ctxt_t {
     int             verify_depth;
     int             verify_mode;
     tcn_pass_cb_t   *cb_data;
+
+    /* for client: List of protocols to request via ALPN.
+     * for server: List of protocols to accept via ALPN.
+     */
+    /* member alpn is array of protocol strings encoded as a list of bytes
+     * of length alpnlen, each protocol string is prepended with a byte
+     * containing the protocol string length (max 255), then follows the
+     * protocol string itself.
+     */
+    char            *alpn;
+    int             alpnlen;
+    /* Add from netty-tcnative */
+    /* certificate verifier callback */
+    jobject verifier;
+    jmethodID verifier_method;
+
+    unsigned char   *next_proto_data;
+    unsigned int    next_proto_len;
+    int             next_selector_failure_behavior;
+
+    /* Holds the alpn protocols, each of them prefixed with the len of the protocol */
+    unsigned char   *alpn_proto_data;
+    unsigned int    alpn_proto_len;
+    int             alpn_selector_failure_behavior;
+    /* End add from netty-tcnative */
 };
 
   
@@ -260,9 +309,13 @@ typedef struct {
 /*
  *  Additional Functions
  */
-void        SSL_init_app_data2_idx(void);
+void        SSL_init_app_data2_3_idx(void);
+/* The app_data2 is used to store the tcn_ssl_ctxt_t pointer for the SSL instance. */ 
 void       *SSL_get_app_data2(SSL *);
 void        SSL_set_app_data2(SSL *, void *);
+/* The app_data3 is used to store the handshakeCount pointer for the SSL instance. */
+void       *SSL_get_app_data3(const SSL *);
+void        SSL_set_app_data3(SSL *, void *);
 int         SSL_password_prompt(tcn_pass_cb_t *);
 int         SSL_password_callback(char *, int, int, void *);
 void        SSL_BIO_close(BIO *);
@@ -277,5 +330,9 @@ void        SSL_callback_handshake(const SSL *, int, int);
 int         SSL_CTX_use_certificate_chain(SSL_CTX *, const char *, int);
 int         SSL_callback_SSL_verify(int, X509_STORE_CTX *);
 int         SSL_rand_seed(const char *file);
+int         SSL_callback_next_protos(SSL *, const unsigned char **, unsigned int *, void *);
+int         SSL_callback_select_next_proto(SSL *, unsigned char **, unsigned char *, const unsigned char *, unsigned int,void *);
+int         SSL_callback_alpn_select_proto(SSL *, const unsigned char **, unsigned char *, const unsigned char *, unsigned int, void *);
+
 
 #endif /* SSL_PRIVATE_H */

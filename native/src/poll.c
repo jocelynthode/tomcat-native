@@ -31,6 +31,7 @@ typedef struct tcn_pollset {
     apr_pollset_t *pollset;
     jlong         *set;
     apr_interval_time_t default_timeout;
+    jboolean       wakeable;
     /* A ring containing all of the pollfd_t that are active
      */
     APR_RING_HEAD(pfd_poll_ring_t, tcn_pfde_t) poll_ring;
@@ -104,11 +105,20 @@ TCN_IMPLEMENT_CALL(jlong, Poll, create)(TCN_STDARGS, jint size,
     apr_pollset_t *pollset = NULL;
     tcn_pollset_t *tps = NULL;
     apr_uint32_t f = (apr_uint32_t)flags | APR_POLLSET_NOCOPY;
+
     UNREFERENCED(o);
     TCN_ASSERT(pool != 0);
 
+#if defined(APR_POLLSET_WAKEABLE)
+    /* By default all pollsets are wakeable.
+     * XXX: See if wee need to define that in Java API when calling this
+     *      method.
+     */
+    f |= APR_POLLSET_WAKEABLE;
+#endif
     if (f & APR_POLLSET_THREADSAFE) {
-        apr_status_t rv = apr_pollset_create(&pollset, (apr_uint32_t)size, p, f);
+        apr_status_t rv = apr_pollset_create(&pollset, (apr_uint32_t)size,
+                                             p, f);
         /* Pass the ENOTIMPL to java, as described in javadocs. Java must clean the
            flag, will know it's not supported.
         */
@@ -118,9 +128,36 @@ TCN_IMPLEMENT_CALL(jlong, Poll, create)(TCN_STDARGS, jint size,
         }
     }
     if (pollset == NULL) {
-        TCN_THROW_IF_ERR(apr_pollset_create(&pollset,
-                         (apr_uint32_t)size, p, f), pollset);
+        apr_status_t rv = apr_pollset_create(&pollset, (apr_uint32_t)size,
+                                             p, f);
+#if defined(APR_POLLSET_WAKEABLE)
+        /* If case we fallback to select provider remove the
+         * APR_POLLSET_WAKEABLE which causes size + 1 elements
+         * and try again if APR_EINVAL is returned.
+         */
+        if (rv == APR_EINVAL)
+            f &= ~APR_POLLSET_WAKEABLE;
+        else if (rv != APR_SUCCESS) {
+            tcn_ThrowAPRException(e, rv);
+            goto cleanup;
+        }
+#else
+        if (rv != APR_SUCCESS) {
+            tcn_ThrowAPRException(e, rv);
+            goto cleanup;
+        }
+#endif
     }
+#if defined(APR_POLLSET_WAKEABLE)
+    if (pollset == NULL) {
+        apr_status_t rv = apr_pollset_create(&pollset, (apr_uint32_t)size,
+                                             p, f);
+        if (rv != APR_SUCCESS) {
+            tcn_ThrowAPRException(e, rv);
+            goto cleanup;
+        }
+    }
+#endif
     tps = apr_pcalloc(p, sizeof(tcn_pollset_t));
     TCN_CHECK_ALLOCATED(tps);
     tps->pollset = pollset;
@@ -134,6 +171,12 @@ TCN_IMPLEMENT_CALL(jlong, Poll, create)(TCN_STDARGS, jint size,
     tps->nalloc = size;
     tps->pool   = p;
     tps->default_timeout = J2T(default_timeout);
+#if defined(APR_POLLSET_WAKEABLE)
+    if (f & APR_POLLSET_WAKEABLE)
+        tps->wakeable = JNI_TRUE;
+    else
+#endif
+    tps->wakeable = JNI_FALSE;
 #ifdef TCN_DO_STATISTICS
     sp_created++;
     apr_pool_cleanup_register(p, (const void *)tps,
@@ -329,7 +372,7 @@ TCN_IMPLEMENT_CALL(jint, Poll, poll)(TCN_STDARGS, jlong pollset,
 #ifdef TCN_DO_STATISTICS
                 p->sp_eintr++;
 #endif
-                continue;
+                /* Pass it to the caller - interrupt() was called */
             }
             TCN_ERROR_WRAP(rv);
 #ifdef TCN_DO_STATISTICS
@@ -482,3 +525,36 @@ TCN_IMPLEMENT_CALL(jint, Poll, pollset)(TCN_STDARGS, jlong pollset,
         (*e)->SetLongArrayRegion(e, set, 0, n, p->set);
     return n / 2;
 }
+
+TCN_IMPLEMENT_CALL(jboolean, Poll, wakeable)(TCN_STDARGS, jlong pollset)
+{
+
+    tcn_pollset_t *p = J2P(pollset,  tcn_pollset_t *);
+    UNREFERENCED_STDARGS;
+
+    return p->wakeable;
+}
+
+#if defined(APR_POLLSET_WAKEABLE)
+
+TCN_IMPLEMENT_CALL(jint, Poll, interrupt)(TCN_STDARGS, jlong pollset)
+{
+    tcn_pollset_t *p = J2P(pollset,  tcn_pollset_t *);
+
+    UNREFERENCED_STDARGS;
+    TCN_ASSERT(pollset != 0);
+
+    return (jint)apr_pollset_wakeup(p->pollset);
+}
+#else
+
+TCN_IMPLEMENT_CALL(jint, Poll, interrupt)(TCN_STDARGS, jlong pollset)
+{
+
+    UNREFERENCED_STDARGS;
+    UNREFERENCED(pollset);
+
+    return APR_ENOTIMPL;
+}
+
+#endif

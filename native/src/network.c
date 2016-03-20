@@ -174,11 +174,15 @@ TCN_IMPLEMENT_CALL(jlong, Socket, create)(TCN_STDARGS, jint family,
     apr_int32_t f, t;
 
     UNREFERENCED(o);
-    TCN_ASSERT(pool != 0);
     GET_S_FAMILY(f, family);
     GET_S_TYPE(t, type);
 
-    TCN_THROW_IF_ERR(apr_pool_create(&c, p), c);
+    if (p == NULL) {
+        TCN_THROW_IF_ERR(apr_pool_create_unmanaged(&c), c);
+    }
+    else {
+        TCN_THROW_IF_ERR(apr_pool_create(&c, p), c);
+    }
 
     a = (tcn_socket_t *)apr_pcalloc(c, sizeof(tcn_socket_t));
     TCN_CHECK_ALLOCATED(a);
@@ -190,14 +194,8 @@ TCN_IMPLEMENT_CALL(jlong, Socket, create)(TCN_STDARGS, jint family,
         TCN_THROW_IF_ERR(apr_socket_create(&s,
                          f, t, protocol, c), a);
     }
-#ifdef HAVE_POOL_PRE_CLEANUP
     apr_pool_pre_cleanup_register(c, (const void *)a,
                                   sp_socket_cleanup);
-#else
-    apr_pool_cleanup_register(c, (const void *)a,
-                              sp_socket_cleanup,
-                              apr_pool_cleanup_null);
-#endif
 
 #ifdef TCN_DO_STATISTICS
     sp_created++;
@@ -221,11 +219,6 @@ TCN_IMPLEMENT_CALL(void, Socket, destroy)(TCN_STDARGS, jlong sock)
     UNREFERENCED_STDARGS;
     TCN_ASSERT(sock != 0);
 
-    if (!tcn_global_pool) {
-        /* Socket will be destroyed by the cleanup
-         */
-        return;
-    }
     as = s->sock;
     s->sock = NULL;
     apr_pool_cleanup_kill(s->pool, s, sp_socket_cleanup);
@@ -386,7 +379,7 @@ TCN_IMPLEMENT_CALL(jlong, Socket, accept)(TCN_STDARGS, jlong sock)
     UNREFERENCED(o);
     TCN_ASSERT(sock != 0);
 
-    TCN_THROW_IF_ERR(apr_pool_create(&p, s->child), p);
+    TCN_THROW_IF_ERR(apr_pool_create_unmanaged(&p), p);
     if (s->net->type == TCN_SOCKET_APR) {
         TCN_ASSERT(s->sock != NULL);
         a = (tcn_socket_t *)apr_pcalloc(p, sizeof(tcn_socket_t));
@@ -394,15 +387,8 @@ TCN_IMPLEMENT_CALL(jlong, Socket, accept)(TCN_STDARGS, jlong sock)
         TCN_THROW_IF_ERR(apr_socket_accept(&n, s->sock, p), n);
 
         a->pool = p;
-#ifdef HAVE_POOL_PRE_CLEANUP
         apr_pool_pre_cleanup_register(a->pool, (const void *)a,
                                       sp_socket_cleanup);
-#else
-        apr_pool_cleanup_register(a->pool, (const void *)a,
-                                  sp_socket_cleanup,
-                                  apr_pool_cleanup_null);
-#endif
-
     }
     else {
         tcn_ThrowAPRException(e, APR_ENOTIMPL);
@@ -418,8 +404,7 @@ TCN_IMPLEMENT_CALL(jlong, Socket, accept)(TCN_STDARGS, jlong sock)
     }
     return P2J(a);
 cleanup:
-    if (tcn_global_pool && p && s->sock)
-        apr_pool_destroy(p);
+    apr_pool_destroy(p);
     return 0;
 }
 
@@ -1167,8 +1152,10 @@ TCN_IMPLEMENT_CALL(jint, Socket, optSet)(TCN_STDARGS, jlong sock,
     if (!s->sock) {
         return APR_ENOTSOCK;
     }
-    else
-        return (jint)(*s->net->opt_set)(s->opaque, (apr_int32_t)opt, (apr_int32_t)on);
+    if(!s->net) {
+        return -(jint)APR_EINVALSOCK;
+    }
+    return (jint)(*s->net->opt_set)(s->opaque, (apr_int32_t)opt, (apr_int32_t)on);
 }
 
 TCN_IMPLEMENT_CALL(jint, Socket, optGet)(TCN_STDARGS, jlong sock,
@@ -1178,12 +1165,16 @@ TCN_IMPLEMENT_CALL(jint, Socket, optGet)(TCN_STDARGS, jlong sock,
     apr_int32_t on = 0;
 
     UNREFERENCED(o);
-    if (!s->sock)
+    if (!s->sock) {
         tcn_ThrowAPRException(e, APR_ENOTSOCK);
-    else {
-        TCN_THROW_IF_ERR((*s->net->opt_get)(s->opaque, (apr_int32_t)opt,
-                                            &on), on);
+        return APR_ENOTSOCK;
     }
+    if(!s->net) {
+        tcn_ThrowAPRException(e, APR_EINVALSOCK);
+        return -(jint)APR_EINVALSOCK;
+    }
+    TCN_THROW_IF_ERR((*s->net->opt_get)(s->opaque, (apr_int32_t)opt,
+                                        &on), on);
 cleanup:
     return (jint)on;
 }
@@ -1196,8 +1187,10 @@ TCN_IMPLEMENT_CALL(jint, Socket, timeoutSet)(TCN_STDARGS, jlong sock,
     UNREFERENCED(o);
     TCN_ASSERT(s->opaque != NULL);
     if (!sock) {
-        tcn_ThrowAPRException(e, APR_ENOTSOCK);
         return APR_ENOTSOCK;
+    }
+    if(!s->net) {
+        return -(jint)APR_EINVALSOCK;
     }
     return (jint)(*s->net->timeout_set)(s->opaque, J2T(timeout));
 }
@@ -1211,6 +1204,10 @@ TCN_IMPLEMENT_CALL(jlong, Socket, timeoutGet)(TCN_STDARGS, jlong sock)
     if (!sock) {
         tcn_ThrowAPRException(e, APR_ENOTSOCK);
         return 0;
+    }
+    if(!s->net) {
+        tcn_ThrowAPRException(e, APR_EINVALSOCK);
+        return -(jint)APR_EINVALSOCK;
     }
     TCN_ASSERT(s->opaque != NULL);
 

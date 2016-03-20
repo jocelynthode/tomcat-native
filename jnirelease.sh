@@ -25,7 +25,7 @@
 #   --with-apr=[directory]
 apr_src_dir=`pwd`/native/srclib/apr
 SVNBASE=https://svn.apache.org/repos/asf/tomcat/native
-TCJAVA_SVNBASE=https://svn.apache.org/repos/asf/tomcat/tc8.0.x/trunk
+TCJAVA_SVNBASE=https://svn.apache.org/repos/asf/tomcat/trunk
 
 # Set the environment variable that stops OSX storing extended
 # attributes in tar archives etc. with a file starting with ._
@@ -178,29 +178,27 @@ fi
 JKJNIDIST=tomcat-native-${JKJNIVER}-src
 
 rm -rf ${JKJNIDIST}
-mkdir -p ${JKJNIDIST}/jni
-for i in native java xdocs examples test build.xml build.properties.default jnirelease.sh
-do
-    svn export ${JKJNISVN}/${i} ${JKJNIDIST}/jni/${i}
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo "svn export ${i} failed"
-        echo ""
-        exit 1
-    fi
-done
+mkdir -p ${JKJNIDIST}
+svn export --force ${JKJNISVN} ${JKJNIDIST}
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "svn export failed"
+    echo ""
+    exit 1
+fi
+rm -f ${JKJNIDIST}/KEYS ${JKJNIDIST}/download_deps.sh
 
 # check the release if release.
 if [ "x$JKJNIREL" = "x1" ]; then
-    grep TCN_IS_DEV_VERSION ${JKJNIDIST}/jni/native/include/tcn_version.h | grep 0
+    grep TCN_IS_DEV_VERSION ${JKJNIDIST}/native/include/tcn_version.h | grep 0
     if [ $? -ne 0 ]; then
-        echo "Check: ${JKJNIDIST}/jni/native/include/tcn_version.h says -dev"
+        echo "Check: ${JKJNIDIST}/native/include/tcn_version.h says -dev"
         echo "Check TCN_IS_DEV_VERSION - Aborting"
         exit 1
     fi
-    WIN_VERSION=`grep TCN_VERSION ${JKJNIDIST}/jni/native/os/win32/libtcnative.rc | grep define | awk ' { print $3 } '`
+    WIN_VERSION=`grep TCN_VERSION ${JKJNIDIST}/native/os/win32/libtcnative.rc | grep define | awk ' { print $3 } '`
     if [ "x\"$JKJNIVER\"" != "x$WIN_VERSION" ]; then
-        echo "Check: ${JKJNIDIST}/jni/native/os/win32/libtcnative.rc says $WIN_VERSION (FILEVERSION, PRODUCTVERSION, TCN_VERSION)"
+        echo "Check: ${JKJNIDIST}/native/os/win32/libtcnative.rc says $WIN_VERSION (FILEVERSION, PRODUCTVERSION, TCN_VERSION)"
         echo "Must be $JKJNIVER - Aborting"
         exit 1
     fi
@@ -209,7 +207,7 @@ else
 fi
 
 top="`pwd`"
-cd ${JKJNIDIST}/jni/xdocs
+cd ${JKJNIDIST}/xdocs
 
 # Make docs
 ant
@@ -220,7 +218,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-$EXPTOOL $EXPOPTS ../build/docs/miscellaneous/changelog.html > ../../CHANGELOG.txt 2>/dev/null
+$EXPTOOL $EXPOPTS ../build/docs/miscellaneous/changelog.html > ../CHANGELOG.txt 2>/dev/null
 if [ $? -ne 0 ]; then
     echo ""
     echo "$EXPTOOL $EXPOPTS ../build/docs/miscellaneous/changelog.html failed"
@@ -228,26 +226,16 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 # Remove page navigation data from converted file.
-cp -p ../../CHANGELOG.txt ../../CHANGELOG.txt.tmp
-awk '/Preface/ {o=1} o>0' ../../CHANGELOG.txt.tmp > ../../CHANGELOG.txt
-rm ../../CHANGELOG.txt.tmp
+cp -p ../CHANGELOG.txt ../CHANGELOG.txt.tmp
+awk '/Preface/ {o=1} o>0' ../CHANGELOG.txt.tmp > ../CHANGELOG.txt
+rm ../CHANGELOG.txt.tmp
 
 cd "$top"
-mv ${JKJNIDIST}/jni/build/docs ${JKJNIDIST}/jni/docs
-rm -rf ${JKJNIDIST}/jni/build
-for i in LICENSE NOTICE README.txt TODO.txt
-do
-    svn cat ${JKJNISVN}/${i} > ${JKJNIDIST}/${i}
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo "svn cat ${JKJNISVN}/${i} failed"
-        echo ""
-        exit 1
-    fi
-done
+mv ${JKJNIDIST}/build/docs ${JKJNIDIST}/docs
+rm -rf ${JKJNIDIST}/build
 
 # Prebuild (create configure)
-cd ${JKJNIDIST}/jni/native
+cd ${JKJNIDIST}/native
 ./buildconf --with-apr=$apr_src_dir || exit 1
 
 cd "$top"
@@ -257,20 +245,18 @@ tar -cf - ${JKJNIDIST} | gzip -c9 > ${JKJNIDIST}.tar.gz || exit 1
 # Create Win32 source distribution
 JKWINDIST=tomcat-native-${JKJNIVER}-win32-src
 rm -rf ${JKWINDIST}
-mkdir -p ${JKWINDIST}/jni
-for i in native java xdocs examples test build.xml build.properties.default jnirelease.sh
-do
-    svn export --native-eol CRLF ${JKJNISVN}/${i} ${JKWINDIST}/jni/${i}
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo "svn export ${i} failed"
-        echo ""
-        exit 1
-    fi
-done
+mkdir -p ${JKWINDIST}
+svn export --force --native-eol CRLF ${JKJNISVN} ${JKWINDIST}
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "svn export failed"
+    echo ""
+    exit 1
+fi
+rm -f ${JKWINDIST}/KEYS ${JKWINDIST}/download_deps.sh
 
 top="`pwd`"
-cd ${JKWINDIST}/jni/xdocs
+cd ${JKWINDIST}/xdocs
 
 # Make docs
 ant
@@ -284,13 +270,12 @@ fi
 cd "$top"
 cp ${JKJNIDIST}/CHANGELOG.txt ${JKWINDIST}
 
-mv ${JKWINDIST}/jni/build/docs ${JKWINDIST}/jni/docs
-rm -rf ${JKWINDIST}/jni/build
+mv ${JKWINDIST}/build/docs ${JKWINDIST}/docs
+rm -rf ${JKWINDIST}/build
 for i in LICENSE NOTICE README.txt TODO.txt
 do
-    svn cat ${JKJNISVN}/${i} > ${JKWINDIST}/${i}
-    $PERL ${JKWINDIST}/jni/native/build/lineends.pl --cr ${JKWINDIST}/${i}
+    $PERL ${JKWINDIST}/native/build/lineends.pl --cr ${JKWINDIST}/${i}
 done
-$PERL ${JKWINDIST}/jni/native/build/lineends.pl --cr ${JKWINDIST}/CHANGELOG.txt
+$PERL ${JKWINDIST}/native/build/lineends.pl --cr ${JKWINDIST}/CHANGELOG.txt
 
 zip -9rqyo ${JKWINDIST}.zip ${JKWINDIST}

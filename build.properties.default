@@ -17,10 +17,10 @@
 
 # ----- Version Control Flags -----
 version.major=1
-version.minor=1
-version.build=35
+version.minor=2
+version.build=5
 version.patch=0
-version.suffix=-dev
+version.suffix=
 
 # ----- Default Base Path for Dependent Packages -----
 # Please note this path must be absolute, not relative,
@@ -30,8 +30,8 @@ base.path=/usr/share/java
 #base.path=C:/path/to/the/repository
 #base.path=/usr/local
 
-compile.source=1.7
-compile.target=1.7
+compile.source=1.8
+compile.target=1.8
 compile.debug=off
 compile.deprecation=on
 compile.optimize=on
@@ -45,7 +45,6 @@ junit.version=3.8.2
 # The directory containing your binary distribution of JUnit
 # It will be automatically downloaded if it doesn't exist
 junit.home=${base.path}/junit${junit.version}
-#junit.home = /usr/local/java/junit3.8.1
 # The pathname of the "junit.jar" JAR file
 junit.jar=${junit.home}/junit.jar
 # The URL used to download JUnit if needed

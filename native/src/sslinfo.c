@@ -197,8 +197,8 @@ static char *lookup_ssl_cert_dn(X509_NAME *xsname, int dnidx)
     return result;
 }
 
-TCN_IMPLEMENT_CALL(jobject, SSLSocket, getInfoB)(TCN_STDARGS, jlong sock,
-                                                 jint what)
+TCN_IMPLEMENT_CALL(jbyteArray, SSLSocket, getInfoB)(TCN_STDARGS, jlong sock,
+                                                    jint what)
 {
     tcn_socket_t   *a = J2P(sock, tcn_socket_t *);
     tcn_ssl_conn_t *s;
@@ -573,8 +573,8 @@ TCN_IMPLEMENT_CALL(jint, SSLSocket, getInfoI)(TCN_STDARGS, jlong sock,
  * Create empty stubs.
  */
 
-TCN_IMPLEMENT_CALL(jobject, SSLSocket, getInfoB)(TCN_STDARGS, jlong sock,
-                                                 jint what)
+TCN_IMPLEMENT_CALL(jbyteArray, SSLSocket, getInfoB)(TCN_STDARGS, jlong sock,
+                                                    jint what)
 {
     UNREFERENCED_STDARGS;
     UNREFERENCED(sock);
