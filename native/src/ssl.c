@@ -357,7 +357,9 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     OPENSSL_load_builtin_modules();
 
     /* Initialize thread support */
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
     ssl_thread_setup();
+    #endif
 
     if (J2S(engine)) {
         ENGINE *ee = NULL;

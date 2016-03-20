@@ -177,7 +177,9 @@ TCN_IMPLEMENT_CALL(void, Library, terminate)(TCN_STDARGS)
 {
 
     UNREFERENCED_STDARGS;
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
     ssl_thread_cleanup();
+    #endif
     ssl_init_cleanup();
 }
 
