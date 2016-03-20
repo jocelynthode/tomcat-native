@@ -81,6 +81,9 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     tcn_ssl_ctxt_t *c = NULL;
     SSL_CTX *ctx = NULL;
     jclass clazz;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    jint prot;
+#endif
 
     UNREFERENCED(o);
     if (protocol == SSL_PROTOCOL_NONE) {
@@ -88,6 +91,7 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
         goto init_failed;
     }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     if (protocol == SSL_PROTOCOL_TLSV1_2) {
 #ifdef HAVE_TLSV1_2
         if (mode == SSL_MODE_CLIENT)
@@ -131,13 +135,16 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
         /* requested but not supported */
 #endif
     } else {
+#endif /* if OPENSSL_VERSION_NUMBER < 0x10100000L */
         if (mode == SSL_MODE_CLIENT)
                 ctx = SSL_CTX_new(TLS_client_method());
         else if (mode == SSL_MODE_SERVER)
                 ctx = SSL_CTX_new(TLS_server_method());
         else
                 ctx = SSL_CTX_new(TLS_method());
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     }
+#endif
 
     if (!ctx) {
         char err[256];
@@ -158,6 +165,8 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     if (c->bio_os != NULL)
         BIO_set_fp(c->bio_os, stderr, BIO_NOCLOSE | BIO_FP_TEXT);
     SSL_CTX_set_options(c->ctx, SSL_OP_ALL);
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     /* always disable SSLv2, as per RFC 6176 */
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
     if (!(protocol & SSL_PROTOCOL_SSLV3))
@@ -172,6 +181,38 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     if (!(protocol & SSL_PROTOCOL_TLSV1_2))
         SSL_CTX_set_options(c->ctx, SSL_OP_NO_TLSv1_2);
 #endif
+
+#else /* if OPENSSL_VERSION_NUMBER < 0x10100000L */
+    /* We first determine the maximum protocol version we should provide */
+    if (protocol & SSL_PROTOCOL_TLSV1_2) {
+        prot = TLS1_2_VERSION;
+    } else if (protocol & SSL_PROTOCOL_TLSV1_1) {
+        prot = TLS1_1_VERSION;
+    } else if (protocol & SSL_PROTOCOL_TLSV1) {
+        prot = TLS1_VERSION;
+    } else if (protocol & SSL_PROTOCOL_SSLV3) {
+        prot = SSL3_VERSION;
+    } else {
+        SSL_CTX_free(ctx);
+        tcn_Throw(e, "Invalid Server SSL Protocol (%d)", protocol);
+        goto init_failed;
+    }
+    SSL_CTX_set_max_proto_version(ctx, prot);
+
+    /* Next we scan for the minimal protocol version we should provide,
+     * but we do not allow holes between max and min */
+    if (prot == TLS1_2_VERSION && protocol & SSL_PROTOCOL_TLSV1_1) {
+        prot = TLS1_1_VERSION;
+    }
+    if (prot == TLS1_1_VERSION && protocol & SSL_PROTOCOL_TLSV1) {
+        prot = TLS1_VERSION;
+    }
+    if (prot == TLS1_VERSION && protocol & SSL_PROTOCOL_TLSV1) {
+        prot = SSL3_VERSION;
+    }
+    SSL_CTX_set_min_proto_version(ctx, prot);
+#endif /* if OPENSSL_VERSION_NUMBER < 0x10100000L */
+
     /*
      * Configure additional context ingredients
      */
