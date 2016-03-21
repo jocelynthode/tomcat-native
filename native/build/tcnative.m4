@@ -108,7 +108,6 @@ dnl Configure for the detected openssl toolkit installation, giving
 dnl preference to "--with-ssl=<path>" if it was specified.
 dnl
 AC_DEFUN(TCN_CHECK_SSL_TOOLKIT,[
-OPENSSL_WARNING=
 AC_MSG_CHECKING(for OpenSSL library)
 AC_ARG_WITH(ssl,
 [  --with-ssl[=PATH]   Build with OpenSSL [yes|no|path]],
@@ -205,9 +204,7 @@ int main() {
 }
         ],
         [AC_MSG_RESULT(ok)],
-        [AC_MSG_RESULT(not compatible)
-            OPENSSL_WARNING=yes
-        ],
+        [AC_MSG_ERROR(Your version of OpenSSL is not compatible with this version of tcnative)],
         [AC_MSG_RESULT(assuming target platform has compatible version)])
 ;;
 no)
