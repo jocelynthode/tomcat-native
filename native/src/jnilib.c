@@ -68,7 +68,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
     /* Initialize global java.lang.String class */
     TCN_LOAD_CLASS(env, jString_class, "java/lang/String", JNI_ERR);
     TCN_LOAD_CLASS(env, jFinfo_class, TCN_FINFO_CLASS, JNI_ERR);
-    TCN_LOAD_CLASS(env, jAinfo_class, TCN_AINFO_CLASS, JNI_ERR);
+    //TCN_LOAD_CLASS(env, jAinfo_class, TCN_AINFO_CLASS, JNI_ERR);
 
     TCN_GET_METHOD(env, jString_class, jString_init,
                    "<init>", "([B)V", JNI_ERR);
@@ -77,8 +77,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
 
     if(tcn_load_finfo_class(env, jFinfo_class) != APR_SUCCESS)
         return JNI_ERR;
-    if(tcn_load_ainfo_class(env, jAinfo_class) != APR_SUCCESS)
-        return JNI_ERR;
+//    if(tcn_load_ainfo_class(env, jAinfo_class) != APR_SUCCESS)
+//        return JNI_ERR;
 #ifdef WIN32
     {
         char *ppid = getenv(TCN_PARENT_IDE);
@@ -108,7 +108,7 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved)
         env  = (JNIEnv *)ppe;
         TCN_UNLOAD_CLASS(env, jString_class);
         TCN_UNLOAD_CLASS(env, jFinfo_class);
-        TCN_UNLOAD_CLASS(env, jAinfo_class);
+//        TCN_UNLOAD_CLASS(env, jAinfo_class);
         apr_terminate();
     }
 }
