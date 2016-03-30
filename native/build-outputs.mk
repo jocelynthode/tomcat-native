@@ -1,6 +1,5 @@
 # DO NOT EDIT. AUTOMATICALLY GENERATED.
 
-src/address.lo: src/address.c .make.dirs include/tcn.h include/tcn_api.h
 src/bb.lo: src/bb.c .make.dirs include/tcn.h include/tcn_api.h
 src/dir.lo: src/dir.c .make.dirs include/tcn.h include/tcn_api.h
 src/error.lo: src/error.c .make.dirs include/tcn.h include/tcn_api.h
@@ -26,7 +25,7 @@ src/stdlib.lo: src/stdlib.c .make.dirs include/tcn.h include/tcn_api.h
 src/thread.lo: src/thread.c .make.dirs include/tcn.h include/tcn_api.h
 src/user.lo: src/user.c .make.dirs include/tcn.h include/tcn_api.h
 
-OBJECTS_all = src/address.lo src/bb.lo src/dir.lo src/error.lo src/file.lo src/info.lo src/jnilib.lo src/lock.lo src/misc.lo src/mmap.lo src/multicast.lo src/network.lo src/os.lo src/poll.lo src/pool.lo src/proc.lo src/shm.lo src/ssl.lo src/sslcontext.lo src/sslinfo.lo src/sslnetwork.lo src/sslutils.lo src/stdlib.lo src/thread.lo src/user.lo
+OBJECTS_all =  src/bb.lo src/dir.lo src/error.lo src/file.lo src/info.lo src/jnilib.lo src/lock.lo src/misc.lo src/mmap.lo src/multicast.lo src/network.lo src/os.lo src/poll.lo src/pool.lo src/proc.lo src/shm.lo src/ssl.lo src/sslcontext.lo src/sslinfo.lo src/sslnetwork.lo src/sslutils.lo src/stdlib.lo src/thread.lo src/user.lo
 
 os/unix/system.lo: os/unix/system.c .make.dirs include/tcn.h include/tcn_api.h
 os/unix/uxpipe.lo: os/unix/uxpipe.c .make.dirs include/tcn.h include/tcn_api.h
