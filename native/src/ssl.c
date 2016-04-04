@@ -1031,72 +1031,6 @@ static BIO_METHOD *BIO_jbs()
     return(&jbs_methods);
 }
 
-TCN_IMPLEMENT_CALL(jlong, SSL, newBIO)(TCN_STDARGS, jlong pool,
-                                       jobject callback)
-{
-    BIO *bio = NULL;
-    BIO_JAVA *j;
-    jclass cls;
-
-    UNREFERENCED(o);
-
-    if ((bio = BIO_new(BIO_jbs())) == NULL) {
-        tcn_ThrowException(e, "Create BIO failed");
-        goto init_failed;
-    }
-    j = (BIO_JAVA *)bio->ptr;
-    if (j == NULL) {
-        tcn_ThrowException(e, "Create BIO failed");
-        goto init_failed;
-    }
-    j->pool = J2P(pool, apr_pool_t *);
-    if (j->pool) {
-        apr_pool_cleanup_register(j->pool, (const void *)bio,
-                                  generic_bio_cleanup,
-                                  apr_pool_cleanup_null);
-    }
-
-    cls = (*e)->GetObjectClass(e, callback);
-    j->cb.mid[0] = (*e)->GetMethodID(e, cls, "write", "([B)I");
-    j->cb.mid[1] = (*e)->GetMethodID(e, cls, "read",  "([B)I");
-    j->cb.mid[2] = (*e)->GetMethodID(e, cls, "puts",  "(Ljava/lang/String;)I");
-    j->cb.mid[3] = (*e)->GetMethodID(e, cls, "gets",  "(I)Ljava/lang/String;");
-    /* TODO: Check if method id's are valid */
-    j->cb.obj    = (*e)->NewGlobalRef(e, callback);
-
-    bio->init  = 1;
-    bio->flags = SSL_BIO_FLAG_CALLBACK;
-    return P2J(bio);
-init_failed:
-    return 0;
-}
-
-TCN_IMPLEMENT_CALL(jint, SSL, closeBIO)(TCN_STDARGS, jlong bio)
-{
-    BIO *b = J2P(bio, BIO *);
-    UNREFERENCED_STDARGS;
-    SSL_BIO_close(b);
-    return APR_SUCCESS;
-}
-
-TCN_IMPLEMENT_CALL(void, SSL, setPasswordCallback)(TCN_STDARGS,
-                                                   jobject callback)
-{
-    jclass cls;
-
-    UNREFERENCED(o);
-    if (tcn_password_callback.cb.obj) {
-        TCN_UNLOAD_CLASS(e,
-                         tcn_password_callback.cb.obj);
-    }
-    cls = (*e)->GetObjectClass(e, callback);
-    tcn_password_callback.cb.mid[0] = (*e)->GetMethodID(e, cls, "callback",
-                           "(Ljava/lang/String;)Ljava/lang/String;");
-    /* TODO: Check if method id is valid */
-    tcn_password_callback.cb.obj    = (*e)->NewGlobalRef(e, callback);
-
-}
-
 TCN_IMPLEMENT_CALL(void, SSL, setPassword)(TCN_STDARGS, jstring password)
 {
     TCN_ALLOC_CSTRING(password);
@@ -1185,22 +1119,6 @@ TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
     return P2J(ssl);
 }
 
-TCN_IMPLEMENT_CALL(void, SSL, setBIO)(TCN_STDARGS,
-                                      jlong ssl /* SSL * */,
-                                      jlong rbio /* BIO * */,
-                                      jlong wbio /* BIO * */) {
-    UNREFERENCED_STDARGS;
-    SSL_set_bio(J2P(ssl, SSL *), J2P(rbio, BIO *), J2P(wbio, BIO *));
-    return;
-}
-
-TCN_IMPLEMENT_CALL(jint, SSL, getError)(TCN_STDARGS,
-                                       jlong ssl /* SSL * */,
-                                       jint ret) {
-    UNREFERENCED_STDARGS;
-    return SSL_get_error(J2P(ssl, SSL*), ret);
-}
-
 /* How much did SSL write into this BIO? */
 TCN_IMPLEMENT_CALL(jint /* nbytes */, SSL, pendingWrittenBytesInBIO)(TCN_STDARGS,
                                                                      jlong bio /* BIO * */) {
@@ -1263,15 +1181,6 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, getShutdown)(TCN_STDARGS,
     UNREFERENCED_STDARGS;
 
     return SSL_get_shutdown(J2P(ssl, SSL *));
-}
-
-/* Called when the peer closes the connection */
-TCN_IMPLEMENT_CALL(void, SSL, setShutdown)(TCN_STDARGS,
-                                           jlong ssl /* SSL * */,
-                                           jint mode) {
-    UNREFERENCED_STDARGS;
-
-    SSL_set_shutdown(J2P(ssl, SSL *), mode);
 }
 
 /* Free the SSL * and its associated internal BIO */

@@ -329,45 +329,6 @@ TCN_IMPLEMENT_CALL(jint, SSLContext, free)(TCN_STDARGS, jlong ctx)
     return apr_pool_cleanup_run(c->pool, c, ssl_context_cleanup);
 }
 
-TCN_IMPLEMENT_CALL(void, SSLContext, setContextId)(TCN_STDARGS, jlong ctx,
-                                                   jstring id)
-{
-    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    TCN_ALLOC_CSTRING(id);
-
-    TCN_ASSERT(ctx != 0);
-    UNREFERENCED(o);
-    if (J2S(id)) {
-        EVP_Digest((const unsigned char *)J2S(id),
-                   (unsigned long)strlen(J2S(id)),
-                   &(c->context_id[0]), NULL, EVP_sha1(), NULL);
-    }
-    TCN_FREE_CSTRING(id);
-}
-
-TCN_IMPLEMENT_CALL(void, SSLContext, setBIO)(TCN_STDARGS, jlong ctx,
-                                             jlong bio, jint dir)
-{
-    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    BIO *bio_handle   = J2P(bio, BIO *);
-
-    UNREFERENCED_STDARGS;
-    TCN_ASSERT(ctx != 0);
-    if (dir == 0) {
-        if (c->bio_os && c->bio_os != bio_handle)
-            SSL_BIO_close(c->bio_os);
-        c->bio_os = bio_handle;
-    }
-    else if (dir == 1) {
-        if (c->bio_is && c->bio_is != bio_handle)
-            SSL_BIO_close(c->bio_is);
-        c->bio_is = bio_handle;
-    }
-    else
-        return;
-    SSL_BIO_doref(bio_handle);
-}
-
 TCN_IMPLEMENT_CALL(void, SSLContext, setOptions)(TCN_STDARGS, jlong ctx,
                                                  jint opt)
 {
@@ -401,16 +362,6 @@ TCN_IMPLEMENT_CALL(void, SSLContext, clearOptions)(TCN_STDARGS, jlong ctx,
     UNREFERENCED_STDARGS;
     TCN_ASSERT(ctx != 0);
     SSL_CTX_clear_options(c->ctx, opt);
-}
-
-TCN_IMPLEMENT_CALL(void, SSLContext, setQuietShutdown)(TCN_STDARGS, jlong ctx,
-                                                       jboolean mode)
-{
-    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-
-    UNREFERENCED_STDARGS;
-    TCN_ASSERT(ctx != 0);
-    SSL_CTX_set_quiet_shutdown(c->ctx, mode ? 1 : 0);
 }
 
 TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCipherSuite)(TCN_STDARGS, jlong ctx,
@@ -591,108 +542,6 @@ cleanup:
     return rv;
 }
 
-TCN_IMPLEMENT_CALL(void, SSLContext, setTmpDH)(TCN_STDARGS, jlong ctx,
-                                                                  jstring file)
-{
-    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    BIO *bio = NULL;
-    DH *dh = NULL;
-    TCN_ALLOC_CSTRING(file);
-    UNREFERENCED(o);
-    TCN_ASSERT(ctx != 0);
-    TCN_ASSERT(file);
-
-    if (!J2S(file)) {
-        tcn_Throw(e, "Error while configuring DH: no dh param file given");
-        return;
-    }
-    
-    bio = BIO_new_file(J2S(file), "r");
-    if (!bio) {
-        char err[256];
-        ERR_error_string(ERR_get_error(), err);
-        tcn_Throw(e, "Error while configuring DH using %s: %s", J2S(file), err);
-        TCN_FREE_CSTRING(file);
-        return;
-    }
-
-    dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
-    BIO_free(bio);
-    if (!dh) {
-        char err[256];
-        ERR_error_string(ERR_get_error(), err);
-        tcn_Throw(e, "Error while configuring DH: no DH parameter found in %s (%s)", J2S(file), err);
-        TCN_FREE_CSTRING(file);
-        return;
-    }
-
-    if (1 != SSL_CTX_set_tmp_dh(c->ctx, dh)) {
-        char err[256];
-        DH_free(dh);
-        ERR_error_string(ERR_get_error(), err);
-        tcn_Throw(e, "Error while configuring DH with file %s: %s", J2S(file), err);
-        TCN_FREE_CSTRING(file);
-        return;
-    }
-    
-    DH_free(dh);
-    TCN_FREE_CSTRING(file);
-}
-
-TCN_IMPLEMENT_CALL(void, SSLContext, setTmpECDHByCurveName)(TCN_STDARGS, jlong ctx,
-                                                                  jstring curveName)
-{
-#ifdef HAVE_ECC
-    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    int i;
-    EC_KEY  *ecdh;
-    TCN_ALLOC_CSTRING(curveName);
-    UNREFERENCED(o);
-    TCN_ASSERT(ctx != 0);
-    TCN_ASSERT(curveName);
-    
-    /* First try to get curve by name */
-    i = OBJ_sn2nid(J2S(curveName));
-    if (!i) {
-        tcn_Throw(e, "Can't configure elliptic curve: unknown curve name %s", J2S(curveName));
-        TCN_FREE_CSTRING(curveName);
-        return;
-    }
-    
-    ecdh = EC_KEY_new_by_curve_name(i);
-    if (!ecdh) {
-        tcn_Throw(e, "Can't configure elliptic curve: unknown curve name %s", J2S(curveName));
-        TCN_FREE_CSTRING(curveName);
-        return;
-    }
-    
-    /* Setting found curve to context */
-    if (1 != SSL_CTX_set_tmp_ecdh(c->ctx, ecdh)) {
-        char err[256];
-        EC_KEY_free(ecdh);
-        ERR_error_string(ERR_get_error(), err);
-        tcn_Throw(e, "Error while configuring elliptic curve %s: %s", J2S(curveName), err);
-        TCN_FREE_CSTRING(curveName);
-        return;
-    }
-    EC_KEY_free(ecdh);
-    TCN_FREE_CSTRING(curveName);
-#else
-	tcn_Throw(e, "Cant't configure elliptic curve: unsupported by this OpenSSL version");
-	return;
-#endif
-}
-
-TCN_IMPLEMENT_CALL(void, SSLContext, setShutdownType)(TCN_STDARGS, jlong ctx,
-                                                      jint type)
-{
-    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-
-    UNREFERENCED_STDARGS;
-    TCN_ASSERT(ctx != 0);
-    c->shutdown_type = type;
-}
-
 TCN_IMPLEMENT_CALL(void, SSLContext, setVerify)(TCN_STDARGS, jlong ctx,
                                                 jint level, jint depth)
 {
@@ -830,19 +679,6 @@ cleanup:
         PKCS12_free(p12);
     BIO_free(in);
     return rc;
-}
-
-TCN_IMPLEMENT_CALL(void, SSLContext, setRandom)(TCN_STDARGS, jlong ctx,
-                                                jstring file)
-{
-    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    TCN_ALLOC_CSTRING(file);
-
-    TCN_ASSERT(ctx != 0);
-    UNREFERENCED(o);
-    if (J2S(file))
-        c->rand_file = apr_pstrdup(c->pool, J2S(file));
-    TCN_FREE_CSTRING(file);
 }
 
 TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS, jlong ctx,
@@ -1210,26 +1046,6 @@ int cb_server_alpn(SSL *ssl,
     return SSL_TLSEXT_ERR_OK;
 }
 
-TCN_IMPLEMENT_CALL(jint, SSLContext, setALPN)(TCN_STDARGS, jlong ctx,
-                                              jbyteArray buf, jint len)
-{
-    tcn_ssl_ctxt_t *sslctx = J2P(ctx, tcn_ssl_ctxt_t *);
-
-    sslctx->alpn = apr_pcalloc(sslctx->pool, len);
-    (*e)->GetByteArrayRegion(e, buf, 0, len, (jbyte *)sslctx->alpn);
-    sslctx->alpnlen = len;
-
-    if (sslctx->mode == SSL_MODE_SERVER) {
-        SSL_CTX_set_alpn_select_cb(sslctx->ctx, cb_server_alpn, sslctx);
-    } else {
-        /*
-         * TODO: Implement client side call-back
-         * SSL_CTX_set_next_proto_select_cb(sslctx->ctx, cb_request_alpn, sslctx);
-         */
-        return APR_ENOTIMPL;
-    }
-    return 0;
-}
 
 /* Start of netty-tc-native add */
 
