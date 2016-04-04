@@ -966,7 +966,6 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, addChainCertificateRaw)(TCN_STDARGS, jl
         rv = JNI_FALSE;
     }
 
-cleanup:
     free(cert);
     return rv;
 }
