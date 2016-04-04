@@ -249,6 +249,11 @@ DH *SSL_get_dh_params(unsigned keylen)
     return NULL; /* impossible to reach. */
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+static void init_bio_methods(void);
+static void free_bio_methods(void);
+#endif
+
 TCN_IMPLEMENT_CALL(jint, SSL, version)(TCN_STDARGS)
 {
     UNREFERENCED_STDARGS;
@@ -279,6 +284,9 @@ tcn_status_t ssl_init_cleanup()
                          tcn_password_callback.cb.obj);
     }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    free_bio_methods();
+#endif
     free_dh_params();
 
     /*
@@ -398,6 +406,10 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     memset(&tcn_password_callback, 0, sizeof(tcn_pass_cb_t));
 
     init_dh_params();
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    init_bio_methods();
+#endif
+
     /*
      * Let us cleanup the ssl library when the library is unloaded
      */
@@ -487,10 +499,11 @@ void SSL_BIO_close(BIO *bi)
 
 void SSL_BIO_doref(BIO *bi)
 {
+    BIO_JAVA *j;
     if (bi == NULL)
         return;
-    if (bi->ptr != NULL && (bi->flags & SSL_BIO_FLAG_CALLBACK)) {
-        BIO_JAVA *j = (BIO_JAVA *)bi->ptr;
+    j = (BIO_JAVA *)BIO_get_data(bi);
+    if (j != NULL && BIO_test_flags(bi, SSL_BIO_FLAG_CALLBACK)) {
         j->refcount++;
     }
 }
@@ -503,37 +516,44 @@ static int jbs_new(BIO *bi)
     if ((j = OPENSSL_malloc(sizeof(BIO_JAVA))) == NULL)
         return 0;
     j->refcount  = 1;
-    bi->shutdown = 1;
-    bi->init     = 0;
+    BIO_set_shutdown(bi, 1);
+    BIO_set_init(bi, 0);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    /* No setter method for OpenSSL 1.1.0 available,
+     * but I can't find any functional use of the
+     * "num" field there either.
+     */
     bi->num      = -1;
-    bi->ptr      = (char *)j;
+#endif
+    BIO_set_data(bi, (void *)j);
 
     return 1;
 }
 
 static int jbs_free(BIO *bi)
 {
+    BIO_JAVA *j;
     if (bi == NULL)
         return 0;
-    if (bi->ptr != NULL) {
-        BIO_JAVA *j = (BIO_JAVA *)bi->ptr;
-        if (bi->init) {
+    j = (BIO_JAVA *)BIO_get_data(bi);
+    if (j != NULL) {
+        if (BIO_get_init(bi)) {
             JNIEnv   *e = NULL;
-            bi->init = 0;
+            BIO_set_init(bi, 0);
             tcn_get_java_env(&e);
             TCN_UNLOAD_CLASS(e, j->cb.obj);
         }
-        OPENSSL_free(bi->ptr);
+        OPENSSL_free(j);
     }
-    bi->ptr = NULL;
+    BIO_set_data(bi, NULL);
     return 1;
 }
 
 static int jbs_write(BIO *b, const char *in, int inl)
 {
     jint ret = -1;
-    if (b->init && in != NULL) {
-        BIO_JAVA *j = (BIO_JAVA *)b->ptr;
+    if (BIO_get_init(b) && in != NULL) {
+        BIO_JAVA *j = (BIO_JAVA *)BIO_get_data(b);
         JNIEnv   *e = NULL;
         jbyteArray jb;
         tcn_get_java_env(&e);
@@ -558,8 +578,8 @@ static int jbs_write(BIO *b, const char *in, int inl)
 static int jbs_read(BIO *b, char *out, int outl)
 {
     jint ret = 0;
-    if (b->init && out != NULL) {
-        BIO_JAVA *j = (BIO_JAVA *)b->ptr;
+    if (BIO_get_init(b) && out != NULL) {
+        BIO_JAVA *j = (BIO_JAVA *)BIO_get_data(b);
         JNIEnv   *e = NULL;
         jbyteArray jb;
         tcn_get_java_env(&e);
@@ -585,8 +605,8 @@ static int jbs_read(BIO *b, char *out, int outl)
 static int jbs_puts(BIO *b, const char *in)
 {
     int ret = 0;
-    if (b->init && in != NULL) {
-        BIO_JAVA *j = (BIO_JAVA *)b->ptr;
+    if (BIO_get_init(b) && in != NULL) {
+        BIO_JAVA *j = (BIO_JAVA *)BIO_get_data(b);
         JNIEnv   *e = NULL;
         tcn_get_java_env(&e);
         ret = (*e)->CallIntMethod(e, j->cb.obj,
@@ -599,8 +619,8 @@ static int jbs_puts(BIO *b, const char *in)
 static int jbs_gets(BIO *b, char *out, int outl)
 {
     int ret = 0;
-    if (b->init && out != NULL) {
-        BIO_JAVA *j = (BIO_JAVA *)b->ptr;
+    if (BIO_get_init(b) && out != NULL) {
+        BIO_JAVA *j = (BIO_JAVA *)BIO_get_data(b);
         JNIEnv   *e = NULL;
         jobject  o;
         tcn_get_java_env(&e);
@@ -634,6 +654,7 @@ static long jbs_ctrl(BIO *b, int cmd, long num, void *ptr)
     return ret;
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 static BIO_METHOD jbs_methods = {
     BIO_TYPE_FILE,
     "Java Callback",
@@ -646,10 +667,34 @@ static BIO_METHOD jbs_methods = {
     jbs_free,
     NULL
 };
+#else
+static BIO_METHOD *jbs_methods = NULL;
+
+static void init_bio_methods(void)
+{
+    jbs_methods = BIO_meth_new(BIO_TYPE_FILE, "Java Callback");
+    BIO_meth_set_write(jbs_methods, &jbs_write);
+    BIO_meth_set_read(jbs_methods, &jbs_read);
+    BIO_meth_set_puts(jbs_methods, &jbs_puts);
+    BIO_meth_set_gets(jbs_methods, &jbs_gets);
+    BIO_meth_set_ctrl(jbs_methods, &jbs_ctrl);
+    BIO_meth_set_create(jbs_methods, &jbs_new);
+    BIO_meth_set_destroy(jbs_methods, &jbs_free);
+}
+
+static void free_bio_methods(void)
+{
+    BIO_meth_free(jbs_methods);
+}
+#endif
 
 static BIO_METHOD *BIO_jbs()
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     return(&jbs_methods);
+#else
+    return jbs_methods;
+#endif
 }
 
 TCN_IMPLEMENT_CALL(void, SSL, setPassword)(TCN_STDARGS, jstring password)
