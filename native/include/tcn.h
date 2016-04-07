@@ -95,9 +95,9 @@
 #define TCN_IMPARGS     JNIEnv *e, jobject o, void *sock
 #define TCN_IMPCALL(X)  e, o, X->opaque
 
-//TODO: Change to tcn2 in Java
+//TODO: Java_org_apache_tcn2_##CL##_##FN
 #define TCN_IMPLEMENT_CALL(RT, CL, FN)  \
-    JNIEXPORT RT JNICALL Java_org_apache_tcn2_##CL##_##FN
+    JNIEXPORT RT JNICALL Java_org_apache_tomcat_jni_##CL##_##FN
 
 #define TCN_IMPLEMENT_METHOD(RT, FN)    \
     static RT method_##FN
