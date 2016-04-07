@@ -104,13 +104,6 @@
 
 #define TCN_GETNET_METHOD(FN)  method_##FN
 
-typedef struct tcn_pfde_t   tcn_pfde_t;
-
-struct tcn_pfde_t {
-    APR_RING_ENTRY(tcn_pfde_t) link;
-    apr_pollfd_t fd;
-};
-
 /* Private helper functions */
 void tcn_Throw(JNIEnv *env, char *fmt, ...);
 jint throwIllegalStateException( JNIEnv *env, char *message);
@@ -162,25 +155,6 @@ void session_init(JNIEnv *e);
             free(c##V);          \
     TCN_END_MACRO
 
-#define TCN_CHECK_ALLOCATED(x)                              \
-        if (x == NULL) {                                    \
-            tcn_ThrowMemoryException(e, __FILE__, __LINE__, \
-            "APR memory allocation failed");                \
-            goto cleanup;                                   \
-        } else (void)(0)
-
-#define TCN_THROW_IF_ERR(x, r)                  \
-    TCN_BEGIN_MACRO                             \
-        apr_status_t R = (x);                   \
-        if (R != APR_SUCCESS) {                 \
-            tcn_ThrowAPRException(e, R);        \
-            (r) = 0;                            \
-            goto cleanup;                       \
-        }                                       \
-    TCN_END_MACRO
-
-#define TCN_THROW_OS_ERROR(E)   \
-    tcn_ThrowAPRException((E), apr_get_os_error())
 
 #define TCN_LOAD_CLASS(E, C, N, R)                  \
     TCN_BEGIN_MACRO                                 \
@@ -215,9 +189,6 @@ typedef struct {
     void        *opaque;
 } tcn_callback_t;
 
-#define TCN_MIN(a, b) ((a) < (b) ? (a) : (b))
-#define TCN_MAX(a, b) ((a) > (b) ? (a) : (b))
-
 #ifdef WIN32
 #define TCN_ALLOC_WSTRING(V)     \
     jsize wl##V = (*e)->GetStringLength(e, V);   \
@@ -236,22 +207,3 @@ typedef struct {
 #define J2W(V)  w##V
 
 #endif
-
-#if  !APR_HAVE_IPV6
-#define APR_INET6 APR_INET
-#endif
-
-#define GET_S_FAMILY(T, F)           \
-    if (F == 0) T = APR_UNSPEC;      \
-    else if (F == 1) T = APR_INET;   \
-    else if (F == 2) T = APR_INET6;  \
-    else T = F
-
-#define GET_S_TYPE(T, F)             \
-    if (F == 0) T = SOCK_STREAM;     \
-    else if (F == 1) T = SOCK_DGRAM; \
-    else T = F
-
-#define TCN_NO_SOCKET_TIMEOUT -2
-
-#endif /* TCN_H */

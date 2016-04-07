@@ -36,10 +36,6 @@
  * Tomcat Native Public API
  */
 
-/* Return global apr pool
- */
-apr_pool_t *tcn_get_global_pool(void);
-
 /* Return global String class
  */
 jclass tcn_get_string_class(void);

@@ -73,6 +73,7 @@ extern "C" {
 
 
 /** The formatted string of APU's version */
+//TODO: Remove APR_STRINGIFY ?
 #define TCN_VERSION_STRING \
      APR_STRINGIFY(TCN_MAJOR_VERSION) "."\
      APR_STRINGIFY(TCN_MINOR_VERSION) "."\
