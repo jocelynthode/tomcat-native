@@ -213,7 +213,7 @@ typedef struct {
     STACK_OF(X509_INFO) *certs;
 } ssl_pkc_t;
 
-typedef struct tcn_ssl_ctxt_t tcn_ssl_ctxt_t;
+
 
 typedef struct {
     char            password[SSL_MAX_PASSWORD_LEN];
@@ -223,8 +223,7 @@ typedef struct {
 
 extern tcn_pass_cb_t tcn_password_callback;
 
-struct tcn_ssl_ctxt_t {
-    apr_pool_t      *pool;
+typedef struct {
     SSL_CTX         *ctx;
     BIO             *bio_os;
     BIO             *bio_is;
@@ -250,7 +249,6 @@ struct tcn_ssl_ctxt_t {
     /* for client or downstream server authentication */
     int             verify_depth;
     int             verify_mode;
-    tcn_pass_cb_t   *cb_data;
 
     /* for client: List of protocols to request via ALPN.
      * for server: List of protocols to accept via ALPN.
@@ -274,22 +272,21 @@ struct tcn_ssl_ctxt_t {
     /* Holds the alpn protocols, each of them prefixed with the len of the protocol */
     unsigned char   *alpn_proto_data;
     unsigned int    alpn_proto_len;
-    int             alpn_selector_failure_behavior;
     /* End add from netty-tcnative */
-};
+    jobject session_context;
+} tcn_ssl_ctxt_t;
 
-  
 typedef struct {
-    apr_pool_t     *pool;
     tcn_ssl_ctxt_t *ctx;
     SSL            *ssl;
     X509           *peer;
     int             shutdown_type;
+    jobject         alpn_selection_callback;
     /* Track the handshake/renegotiation state for the connection so
      * that all client-initiated renegotiations can be rejected, as a
      * partial fix for CVE-2009-3555.
      */
-    enum { 
+    enum {
         RENEG_INIT = 0, /* Before initial handshake */
         RENEG_REJECT,   /* After initial handshake; any client-initiated
                          * renegotiation should be rejected
@@ -301,8 +298,6 @@ typedef struct {
                          * connection
                          */
     } reneg_state;
-    apr_socket_t   *sock;
-    apr_pollset_t  *pollset;
 } tcn_ssl_conn_t;
 
 

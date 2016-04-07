@@ -17,20 +17,6 @@
 #ifndef TCN_H
 #define TCN_H
 
-#include "apr.h"
-#include "apr_general.h"
-#include "apr_lib.h"
-#include "apr_pools.h"
-#include "apr_portable.h"
-#include "apr_network_io.h"
-#include "apr_poll.h"
-#include "apr_ring.h"
-#include "apr_strings.h"
-
-#ifndef APR_HAS_THREADS
-#error "Missing APR_HAS_THREADS support from APR."
-#endif
-
 #if defined(DEBUG) || defined(_DEBUG)
 /* On -DDEBUG use the statistics */
 #ifndef TCN_DO_STATISTICS
@@ -86,14 +72,16 @@
     else                                    \
         (E) = (E)
 
-#define TCN_CLASS_PATH  "org/apache/tomcat/jni/"
+#define TCN_CLASS_PATH  "org/apache/tcn2/"
 #define TCN_FINFO_CLASS TCN_CLASS_PATH "FileInfo"
-#define TCN_AINFO_CLASS TCN_CLASS_PATH "Sockaddr"
 #define TCN_ERROR_CLASS TCN_CLASS_PATH "Error"
 #define TCN_PARENT_IDE  "TCN_PARENT_ID"
 
 #define UNREFERENCED(P)      (P) = (P)
-#define UNREFERENCED_STDARGS e = e; o = o
+#define UNREFERENCED_STDARGS (e) = (e);(o) = (o);
+// Use "weak" to redeclare optional features
+// TODO: Check if needed
+#define weak __attribute__((weak))
 #ifdef WIN32
 #define LLT(X) (X)
 #else
@@ -107,40 +95,15 @@
 #define TCN_IMPARGS     JNIEnv *e, jobject o, void *sock
 #define TCN_IMPCALL(X)  e, o, X->opaque
 
+//TODO: Change to tcn2 in Java
 #define TCN_IMPLEMENT_CALL(RT, CL, FN)  \
-    JNIEXPORT RT JNICALL Java_org_apache_tomcat_jni_##CL##_##FN
+    JNIEXPORT RT JNICALL Java_org_apache_tcn2_##CL##_##FN
 
 #define TCN_IMPLEMENT_METHOD(RT, FN)    \
     static RT method_##FN
 
 #define TCN_GETNET_METHOD(FN)  method_##FN
 
-#define TCN_SOCKET_UNKNOWN  0
-#define TCN_SOCKET_APR      1
-#define TCN_SOCKET_SSL      2
-#define TCN_SOCKET_UNIX     3
-#define TCN_SOCKET_NTPIPE   4
-
-#define TCN_SOCKET_GET_POOL 0
-#define TCN_SOCKET_GET_IMPL 1
-#define TCN_SOCKET_GET_APRS 2
-#define TCN_SOCKET_GET_TYPE 3
-
-typedef struct {
-    int type;
-    apr_status_t (*cleanup)(void *);
-    apr_status_t (APR_THREAD_FUNC *close) (apr_socket_t *);
-    apr_status_t (APR_THREAD_FUNC *shutdown) (apr_socket_t *, apr_shutdown_how_e);
-    apr_status_t (APR_THREAD_FUNC *opt_get)(apr_socket_t *, apr_int32_t, apr_int32_t *);
-    apr_status_t (APR_THREAD_FUNC *opt_set)(apr_socket_t *, apr_int32_t, apr_int32_t);
-    apr_status_t (APR_THREAD_FUNC *timeout_get)(apr_socket_t *, apr_interval_time_t *);
-    apr_status_t (APR_THREAD_FUNC *timeout_set)(apr_socket_t *, apr_interval_time_t);
-    apr_status_t (APR_THREAD_FUNC *send) (apr_socket_t *, const char *, apr_size_t *);
-    apr_status_t (APR_THREAD_FUNC *sendv)(apr_socket_t *, const struct iovec *, apr_int32_t, apr_size_t *);
-    apr_status_t (APR_THREAD_FUNC *recv) (apr_socket_t *, char *, apr_size_t *);
-} tcn_nlayer_t;
-
-typedef struct tcn_socket_t tcn_socket_t;
 typedef struct tcn_pfde_t   tcn_pfde_t;
 
 struct tcn_pfde_t {
@@ -148,33 +111,31 @@ struct tcn_pfde_t {
     apr_pollfd_t fd;
 };
 
-struct tcn_socket_t {
-    apr_pool_t   *pool;
-    apr_pool_t   *child;
-    apr_socket_t *sock;
-    void         *opaque;
-    char         *jsbbuff;
-    char         *jrbbuff;
-    tcn_nlayer_t *net;
-    tcn_pfde_t   *pe;
-    apr_time_t          last_active;
-    apr_interval_time_t timeout;
-};
-
 /* Private helper functions */
-void            tcn_Throw(JNIEnv *, const char *, ...);
-void            tcn_ThrowException(JNIEnv *, const char *);
-void            tcn_ThrowMemoryException(JNIEnv *, const char *, int, const char *);
-void            tcn_ThrowAPRException(JNIEnv *, apr_status_t);
-jstring         tcn_new_string(JNIEnv *, const char *);
-jstring         tcn_new_stringn(JNIEnv *, const char *, size_t);
+void tcn_Throw(JNIEnv *env, char *fmt, ...);
+jint throwIllegalStateException( JNIEnv *env, char *message);
+jint throwIllegalArgumentException( JNIEnv *env, char *message);
+jint tcn_get_java_env(JNIEnv **env);
+JavaVM * tcn_get_java_vm();
+
+jstring tcn_new_string(JNIEnv *env, const char *str);
+jstring tcn_new_stringn(JNIEnv *env, const char *str, size_t l);
+
+/* TODO: check if needed */
 jbyteArray      tcn_new_arrayb(JNIEnv *, const unsigned char *, size_t);
 jobjectArray    tcn_new_arrays(JNIEnv *env, size_t len);
 char           *tcn_get_string(JNIEnv *, jstring);
 char           *tcn_strdup(JNIEnv *, jstring);
 char           *tcn_pstrdup(JNIEnv *, jstring, apr_pool_t *);
-apr_status_t    tcn_load_finfo_class(JNIEnv *, jclass);
-apr_status_t    tcn_load_ainfo_class(JNIEnv *, jclass);
+/* ENDTODO: */
+
+void setup_session_context(JNIEnv *e, tcn_ssl_ctxt_t *c);
+/*thread setup function*/
+void ssl_thread_setup();
+
+void alpn_init(JNIEnv *e);
+void session_init(JNIEnv *e);
+
 
 #define J2S(V)  c##V
 #define J2L(V)  p##V
