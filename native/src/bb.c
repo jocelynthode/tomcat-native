@@ -38,9 +38,6 @@ TCN_IMPLEMENT_CALL(void, Buffer, free)(TCN_STDARGS, jobject bb)
 
     UNREFERENCED(o);
     if ((mem = (*e)->GetDirectBufferAddress(e, bb)) != NULL) {
-        /* This can cause core dump if address was
-         * allocated from the APR pool.
-         */
         free(mem);
     }
 }
