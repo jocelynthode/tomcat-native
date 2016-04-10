@@ -81,13 +81,10 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved)
     if ((*vm)->GetEnv(vm, &ppe, JNI_VERSION_1_2)) {
         return;
     }
-    // TODO: Should we still unload jstring ?
-    // We removed tcn_global_pool, but we still load
-    // jString_class in JNI_OnLoad.
-//    if (tcn_global_pool) {
-//        env  = (JNIEnv *)ppe;
-//        TCN_UNLOAD_CLASS(env, jString_class);
-//    }
+    if (jString_class) {
+        env  = (JNIEnv *)ppe;
+        TCN_UNLOAD_CLASS(env, jString_class);
+    }
 }
 
 jstring tcn_new_stringn(JNIEnv *env, const char *str, size_t l)
