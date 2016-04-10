@@ -15,6 +15,7 @@
  */
 
 #include "tcn.h"
+//TODO: Remove apr
 #include "apr_file_io.h"
 #include "apr_thread_mutex.h"
 #include "apr_atomic.h"
@@ -30,6 +31,7 @@ extern apr_pool_t *tcn_global_pool;
 ENGINE *tcn_ssl_engine = NULL;
 tcn_pass_cb_t tcn_password_callback;
 
+//TODO: Remove because we don't need pool ?
 /* Global reference to the pool used by the dynamic mutexes */
 static apr_pool_t *dynlockpool = NULL;
 
@@ -37,6 +39,7 @@ static apr_pool_t *dynlockpool = NULL;
 static jclass byteArrayClass;
 static jclass stringClass;
 
+//TODO: remove pool
 /* Dynamic lock structure */
 struct CRYPTO_dynlock_value {
     apr_pool_t *pool;
@@ -287,6 +290,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, versionString)(TCN_STDARGS)
 /*
  *  the various processing hooks
  */
+//TODO import apr_status_t ?
 static apr_status_t ssl_init_cleanup(void *data)
 {
     UNREFERENCED(data);
@@ -355,7 +359,7 @@ static ENGINE *ssl_try_load_engine(const char *engine)
 /*
  * To ensure thread-safetyness in OpenSSL
  */
-
+//TODO: use pthread_mutex_lock that are in threads.c
 static apr_thread_mutex_t **ssl_lock_cs;
 static int                  ssl_lock_num_locks;
 
@@ -374,6 +378,8 @@ static void ssl_thread_lock(int mode, int type,
     }
 }
 
+
+//TODO: Rewrite code
 static unsigned long ssl_thread_id(void)
 {
     /* OpenSSL needs this to return an unsigned long.  On OS/390, the pthread
@@ -394,6 +400,7 @@ static unsigned long ssl_thread_id(void)
 #endif
 }
 
+//TODO: Rewrite
 static apr_status_t ssl_thread_cleanup(void *data)
 {
     UNREFERENCED(data);
@@ -415,6 +422,7 @@ static apr_status_t ssl_thread_cleanup(void *data)
 /*
  * Dynamic lock creation callback
  */
+ //TODO: Rewrite
 static struct CRYPTO_dynlock_value *ssl_dyn_create_function(const char *file,
                                                      int line)
 {
@@ -458,7 +466,7 @@ static struct CRYPTO_dynlock_value *ssl_dyn_create_function(const char *file,
 /*
  * Dynamic locking and unlocking function
  */
-
+//TODO: Rewrite with pthread
 static void ssl_dyn_lock_function(int mode, struct CRYPTO_dynlock_value *l,
                            const char *file, int line)
 {
@@ -475,6 +483,7 @@ static void ssl_dyn_lock_function(int mode, struct CRYPTO_dynlock_value *l,
 /*
  * Dynamic lock destruction callback
  */
+ //TODO: Rewrite with pthread and malloc
 static void ssl_dyn_destroy_function(struct CRYPTO_dynlock_value *l,
                           const char *file, int line)
 {
@@ -489,6 +498,8 @@ static void ssl_dyn_destroy_function(struct CRYPTO_dynlock_value *l,
      */
     apr_pool_destroy(l->pool);
 }
+
+//TODO: Rewrite with pthread and malloc
 static void ssl_thread_setup(apr_pool_t *p)
 {
     int i;
@@ -518,6 +529,7 @@ static void ssl_thread_setup(apr_pool_t *p)
                               apr_pool_cleanup_null);
 }
 
+ //TODO: Rewrite
 static int ssl_rand_choosenum(int l, int h)
 {
     int i;
@@ -531,6 +543,7 @@ static int ssl_rand_choosenum(int l, int h)
     return i;
 }
 
+ //TODO: Take APR_PATH
 static int ssl_rand_load_file(const char *file)
 {
     char buffer[APR_PATH_MAX];
@@ -560,6 +573,7 @@ static int ssl_rand_load_file(const char *file)
  * file which can be used to initialize the PRNG by calling
  * RAND_load_file() in a later session
  */
+//TODO: Take APR_PATH
 static int ssl_rand_save_file(const char *file)
 {
     char buffer[APR_PATH_MAX];
@@ -576,6 +590,7 @@ static int ssl_rand_save_file(const char *file)
         return 1;
 }
 
+ //TODO: Take types
 int SSL_rand_seed(const char *file)
 {
     unsigned char stackdata[256];
@@ -647,6 +662,7 @@ static int ssl_rand_make(const char *file, int len, int base64)
     return r > 0 ? 1 : 0;
 }
 
+ //TODO: Remove Pool
 TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
     jclass clazz;
@@ -686,6 +702,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* Initialize thread support */
     ssl_thread_setup(tcn_global_pool);
 
+ //TODO: Remove exceptions and take CONSTANTS
 #ifndef OPENSSL_NO_ENGINE
     if (J2S(engine)) {
         ENGINE *ee = NULL;
@@ -731,6 +748,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /*
      * Let us cleanup the ssl library when the library is unloaded
      */
+      //TODO: Remove or Rewrite ?
     apr_pool_cleanup_register(tcn_global_pool, NULL,
                               ssl_init_cleanup,
                               apr_pool_cleanup_null);
@@ -778,6 +796,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, randMake)(TCN_STDARGS, jstring file,
     return r ? JNI_TRUE : JNI_FALSE;
 }
 
+//TODO: Rewrite pstrdup ?
 TCN_IMPLEMENT_CALL(void, SSL, randSet)(TCN_STDARGS, jstring file)
 {
     TCN_ALLOC_CSTRING(file);
@@ -830,11 +849,10 @@ TCN_IMPLEMENT_CALL(jint, SSL, fipsModeSet)(TCN_STDARGS, jint mode)
 
 typedef struct  {
     int            refcount;
-    apr_pool_t     *pool;
     tcn_callback_t cb;
 } BIO_JAVA;
 
-
+ //TODO: Change type
 static apr_status_t generic_bio_cleanup(void *data)
 {
     BIO *b = (BIO *)data;
@@ -845,6 +863,7 @@ static apr_status_t generic_bio_cleanup(void *data)
     return APR_SUCCESS;
 }
 
+ //TODO: Remove pool
 void SSL_BIO_close(BIO *bi)
 {
     if (bi == NULL)
@@ -1071,6 +1090,7 @@ static void ssl_info_callback(const SSL *ssl, int where, int ret) {
     }
 }
 
+ //TODO: Rwrite malloc
 TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
                                                    jlong ctx /* tcn_ssl_ctxt_t * */,
                                                    jboolean server) {
@@ -1678,6 +1698,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, versionString)(TCN_STDARGS)
     return NULL;
 }
 
+ //TODO: Remove error
 TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
     UNREFERENCED(o);
@@ -1739,6 +1760,7 @@ TCN_IMPLEMENT_CALL(jlong, SSL, newBIO)(TCN_STDARGS, jlong pool,
     return 0;
 }
 
+ //TODO: Remove error
 TCN_IMPLEMENT_CALL(jint, SSL, closeBIO)(TCN_STDARGS, jlong bio)
 {
     UNREFERENCED_STDARGS;

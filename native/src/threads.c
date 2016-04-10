@@ -21,6 +21,7 @@ extern crypto_dynamic_methods crypto_methods;
 /* This file contains all thread related functions */
 
 /*define our lock structure for dynamic locks*/
+//TODO: Check CRYPTO_dynlock in ssl.c
 #ifdef WIN32
 #define ssl_lock_type HANDLE
 static HANDLE* ssl_lock_cs;

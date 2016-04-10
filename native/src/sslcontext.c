@@ -132,6 +132,7 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 }
 
 /* Initialize server context */
+//TODO: Remove pool
 TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
                                             jint protocol, jint mode)
 {
@@ -212,6 +213,7 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
         tcn_Throw(e, "Invalid Server SSL Protocol (%s)", err);
         goto init_failed;
     }
+    //TODO: Use malloc ? and remove exception
     if ((c = apr_pcalloc(p, sizeof(tcn_ssl_ctxt_t))) == NULL) {
         tcn_ThrowAPRException(e, apr_get_os_error());
         goto init_failed;
@@ -307,6 +309,7 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
     /*
      * Let us cleanup the ssl context when the pool is destroyed
      */
+     //TODO: Do we still have to cleanup with no pool ?
     apr_pool_cleanup_register(p, (const void *)c,
                               ssl_context_cleanup,
                               apr_pool_cleanup_null);
@@ -326,6 +329,7 @@ TCN_IMPLEMENT_CALL(jint, SSLContext, free)(TCN_STDARGS, jlong ctx)
     UNREFERENCED_STDARGS;
     TCN_ASSERT(ctx != 0);
     /* Run and destroy the cleanup callback */
+    //TODO: Do we still have to cleanup with no pool ?
     return apr_pool_cleanup_run(c->pool, c, ssl_context_cleanup);
 }
 
@@ -924,6 +928,7 @@ cleanup:
     return rv;
 }
 
+//TODO: Import array header and APR_ARRAY_IDX ?
 static int ssl_array_index(apr_array_header_t *array,
                            const char *s)
 {
@@ -984,6 +989,7 @@ int cb_server_alpn(SSL *ssl,
         return SSL_TLSEXT_ERR_ALERT_FATAL;
     }
 
+    //TODO: Check what this function does ?
     client_protos = apr_array_make(con->pool , 0, sizeof(char *));
     for (i = 0; i < inlen; /**/) {
         /* Grab length of next item from leading length byte */
@@ -1016,6 +1022,7 @@ int cb_server_alpn(SSL *ssl,
             // of the protocol list.
             return SSL_TLSEXT_ERR_ALERT_FATAL;
         }
+        //TODO: Check what this does
         APR_ARRAY_PUSH(proposed_protos, char*) = apr_pstrndup(con->pool, (const char *)tcsslctx->alpn+i, plen);
         i += plen;
     }

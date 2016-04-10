@@ -15,7 +15,6 @@
  */
 
 #include "tcn.h"
-#include "apr_file_io.h"
 
 #define DECLARE_FINFO_FIELD(name) static jfieldID _fid##name = NULL
 #define FINFO_FIELD(name)         _fid##name
@@ -190,21 +189,4 @@ static void fill_finfo(JNIEnv *e, jobject obj, apr_finfo_t *info)
     SET_FINFO_S(fname, info->fname);
     SET_FINFO_S(name, info->name);
     SET_FINFO_J(filehand, P2J(info->filehand));
-}
-
-static void fill_ainfo(JNIEnv *e, jobject obj, apr_sockaddr_t *info)
-{
-    apr_int32_t f;
-    if (info->family == APR_UNSPEC) f = 0;
-    else if (info->family == APR_INET) f = 1;
-    else if (info->family == APR_INET6) f = 2;
-    else f = info->family;
-
-    SET_AINFO_J(pool, P2J(info->pool));
-    SET_AINFO_S(hostname, info->hostname);
-    SET_AINFO_S(servname, info->servname);
-    SET_AINFO_I(port, info->port);
-    SET_AINFO_I(family, f);
-    SET_AINFO_J(next, P2J(info->next));
-
 }

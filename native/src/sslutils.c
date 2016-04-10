@@ -687,7 +687,7 @@ static int ssl_verify_OCSP(int ok, X509_STORE_CTX *ctx)
     return r;
 }
 
-
+//TODO: Rewrite maybe ? or just delete ?
 /* Helps with error handling or realloc */
 static void *apr_xrealloc(void *buf, size_t oldlen, size_t len, apr_pool_t *p)
 {
@@ -700,6 +700,7 @@ static void *apr_xrealloc(void *buf, size_t oldlen, size_t len, apr_pool_t *p)
 
 /* parses the ocsp url and updates the ocsp_urls and nocsp_urls variables
    returns 0 on success, 1 on failure */
+   //TODO: Remove pool and rewrite ?
 static int parse_ocsp_url(unsigned char *asn1, char ***ocsp_urls,
                           int *nocsp_urls, apr_pool_t *p)
 {
@@ -731,6 +732,7 @@ static int parse_ocsp_url(unsigned char *asn1, char ***ocsp_urls,
 }
 
 /* parses the ANS1 OID and if it is an OCSP OID then calls the parse_ocsp_url function */
+   //TODO: Remove pool and rewrite ?
 static int parse_ASN1_OID(unsigned char *asn1, char ***ocsp_urls, int *nocsp_urls, apr_pool_t *p)
 {
     int len, err = 0 ;
@@ -752,6 +754,7 @@ static int parse_ASN1_OID(unsigned char *asn1, char ***ocsp_urls, int *nocsp_url
    the same sequence the while loop parses the sequences */
 
 /* This algo was developed with AIA in mind so it was tested only with this extension */
+   //TODO: Remove pool and rewrite ?
 static int parse_ASN1_Sequence(unsigned char *asn1, char ***ocsp_urls,
                                int *nocsp_urls, apr_pool_t *p)
 {
@@ -780,6 +783,7 @@ static int parse_ASN1_Sequence(unsigned char *asn1, char ***ocsp_urls,
 /* the main function that gets the ASN1 encoding string and returns
    a pointer to a NULL terminated "array" of char *, that contains
    the ocsp_urls */
+      //TODO: Remove pool and rewrite ?
 static char **decode_OCSP_url(ASN1_OCTET_STRING *os, apr_pool_t *p)
 {
     char **response = NULL;
@@ -821,30 +825,6 @@ static int add_ocsp_cert(OCSP_REQUEST **req, X509 *cert, X509 *issuer,
         return 1;
 }
 
-
-/* Creates the APR socket and connect to the hostname. Returns the
-   socket or NULL if there is an error.
-*/
-static apr_socket_t *make_socket(char *hostname, int port, apr_pool_t *mp)
-{
-    apr_sockaddr_t *sa_in;
-    apr_status_t status;
-    apr_socket_t *sock = NULL;
-
-
-    status = apr_sockaddr_info_get(&sa_in, hostname, APR_INET, port, 0, mp);
-
-    if (status == APR_SUCCESS)
-        status = apr_socket_create(&sock, sa_in->family, SOCK_STREAM, APR_PROTO_TCP, mp);
-    if (status == APR_SUCCESS)
-        status = apr_socket_connect(sock, sa_in);
-
-    if (status == APR_SUCCESS)
-        return sock;
-    return NULL;
-}
-
-
 /* Creates the request in a memory BIO in order to send it to the OCSP server.
    Most parts of this function are taken from mod_ssl support for OCSP (with some
    minor modifications
@@ -875,6 +855,7 @@ static BIO *serialize_request(OCSP_REQUEST *req, char *host, int port, char *pat
 
 
 /* Send the OCSP request to the OCSP server. Taken from mod_ssl OCSP support */
+//TODO: Maybe we don't need to handle this at this level anymore
 static int ocsp_send_req(apr_socket_t *sock, BIO *req)
 {
     int len;
@@ -906,6 +887,7 @@ static int ocsp_send_req(apr_socket_t *sock, BIO *req)
 
 /* Parses the buffer from the response and extracts the OCSP response.
    Taken from openssl library */
+//TODO: Import apr_isspace ?
 static OCSP_RESPONSE *parse_ocsp_resp(char *buf, int len)
 {
     BIO *mem = NULL;
@@ -984,6 +966,7 @@ err:
 
 /* Reads the respnse from the APR socket to a buffer, and parses the buffer to
    return the OCSP response  */
+//TODO: Probably we don't need this anymore
 #define ADDLEN 512
 static OCSP_RESPONSE *ocsp_get_resp(apr_socket_t *sock)
 {
@@ -1035,6 +1018,7 @@ static OCSP_RESPONSE *ocsp_get_resp(apr_socket_t *sock)
 }
 
 /* Creates and OCSP request and returns the OCSP_RESPONSE */
+//TODO: Probably we don't need this anymore
 static OCSP_RESPONSE *get_ocsp_response(X509 *cert, X509 *issuer, char *url)
 {
     OCSP_RESPONSE *ocsp_resp = NULL;
@@ -1129,6 +1113,7 @@ static int process_ocsp_response(OCSP_RESPONSE *ocsp_resp)
     return o;
 }
 
+//TODO: Probably we don't need this anymore
 static int ssl_ocsp_request(X509 *cert, X509 *issuer)
 {
     char **ocsp_urls = NULL;

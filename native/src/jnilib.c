@@ -15,11 +15,6 @@
  */
 
 #include "tcn.h"
-#include "apr_version.h"
-#include "apr_file_io.h"
-#include "apr_mmap.h"
-#include "apr_atomic.h"
-#include "apr_poll.h"
 
 #include "tcn_version.h"
 
@@ -54,16 +49,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
     }
     tcn_global_vm = vm;
     env           = (JNIEnv *)ppe;
-    /* Before doing anything else check if we have a valid
-     * APR version. We need version 1.4.3 as minimum.
-     */
-    apr_version(&apv);
-    apvn = apv.major * 1000 + apv.minor * 100 + apv.patch;
-    if (apvn < 1403) {
-        tcn_Throw(env, "Unsupported APR version %s: this tcnative requires at least 1.4.3",
-                  apr_version_string());
-        return JNI_ERR;
-    }
 
     /* Initialize global java.lang.String class */
     TCN_LOAD_CLASS(env, jString_class, "java/lang/String", JNI_ERR);
@@ -75,6 +60,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
     TCN_GET_METHOD(env, jString_class, jString_getBytes,
                    "getBytes", "()[B", JNI_ERR);
 
+// Keep or not ?
     if(tcn_load_finfo_class(env, jFinfo_class) != APR_SUCCESS)
         return JNI_ERR;
 //    if(tcn_load_ainfo_class(env, jAinfo_class) != APR_SUCCESS)
@@ -103,13 +89,6 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved)
 
     if ((*vm)->GetEnv(vm, &ppe, JNI_VERSION_1_2)) {
         return;
-    }
-    if (tcn_global_pool) {
-        env  = (JNIEnv *)ppe;
-        TCN_UNLOAD_CLASS(env, jString_class);
-        TCN_UNLOAD_CLASS(env, jFinfo_class);
-//        TCN_UNLOAD_CLASS(env, jAinfo_class);
-        apr_terminate();
     }
 }
 
@@ -211,6 +190,7 @@ char *tcn_pstrdup(JNIEnv *env, jstring jstr, apr_pool_t *pool)
     return result;
 }
 
+//TODO: Remove because we don't need pool ?
 TCN_IMPLEMENT_CALL(jboolean, Library, initialize)(TCN_STDARGS)
 {
 
@@ -225,6 +205,7 @@ TCN_IMPLEMENT_CALL(jboolean, Library, initialize)(TCN_STDARGS)
     return JNI_TRUE;
 }
 
+//TODO: Remove because we don't need pool ?
 TCN_IMPLEMENT_CALL(void, Library, terminate)(TCN_STDARGS)
 {
 
@@ -246,12 +227,15 @@ TCN_IMPLEMENT_CALL(void, Library, terminate)(TCN_STDARGS)
     }
 }
 
+//TODO: Remove because we don't need pool ?
 TCN_IMPLEMENT_CALL(jlong, Library, globalPool)(TCN_STDARGS)
 {
     UNREFERENCED_STDARGS;
     return P2J(tcn_global_pool);
 }
 
+
+//TODO: Remove apr version
 TCN_IMPLEMENT_CALL(jint, Library, version)(TCN_STDARGS, jint what)
 {
     apr_version_t apv;
@@ -294,12 +278,14 @@ TCN_IMPLEMENT_CALL(jstring, Library, versionString)(TCN_STDARGS)
     return AJP_TO_JSTRING(TCN_VERSION_STRING);
 }
 
+//TODO: Remove Apr version
 TCN_IMPLEMENT_CALL(jstring, Library, aprVersionString)(TCN_STDARGS)
 {
     UNREFERENCED(o);
     return AJP_TO_JSTRING(apr_version_string());
 }
 
+//TODO: Remove we don't need this
 TCN_IMPLEMENT_CALL(jboolean, Library, has)(TCN_STDARGS, jint what)
 {
     jboolean rv = JNI_FALSE;
@@ -420,6 +406,7 @@ TCN_IMPLEMENT_CALL(jboolean, Library, has)(TCN_STDARGS, jint what)
     return rv;
 }
 
+//TODO: Remove or import some of this ?
 TCN_IMPLEMENT_CALL(jint, Library, size)(TCN_STDARGS, jint what)
 {
 
@@ -452,6 +439,7 @@ TCN_IMPLEMENT_CALL(jint, Library, size)(TCN_STDARGS, jint what)
     return 0;
 }
 
+//TODO: Remove because we don't need pool ?
 apr_pool_t *tcn_get_global_pool()
 {
     if (!tcn_global_pool) {

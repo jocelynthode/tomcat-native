@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+//TODO: Remove Entire file ? and write with malloc ?
 #include "tcn.h"
 
+//TODO: Remove because we don't need pool ?
 extern apr_pool_t *tcn_global_pool;
 
+//TODO: Remove because we don't need pool ?
 static apr_status_t generic_pool_cleanup(void *data)
 {
     apr_status_t rv = APR_SUCCESS;
