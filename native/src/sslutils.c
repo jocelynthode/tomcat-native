@@ -80,9 +80,9 @@ void SSL_init_app_data2_3_idx(void)
 
 }
 
-void *SSL_get_app_data2(SSL *ssl)
+tcn_ssl_ctxt_t *SSL_get_app_data2(SSL *ssl)
 {
-    return (void *)SSL_get_ex_data(ssl, SSL_app_data2_idx);
+    return (tcn_ssl_ctxt_t *)SSL_get_ex_data(ssl, SSL_app_data2_idx);
 }
 
 void SSL_set_app_data2(SSL *ssl, void *arg)

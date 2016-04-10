@@ -45,6 +45,9 @@ TCN_IMPLEMENT_CALL(void, Buffer, free)(TCN_STDARGS, jobject bb)
 TCN_IMPLEMENT_CALL(jlong, Buffer, address)(TCN_STDARGS, jobject bb)
 {
     UNREFERENCED(o);
+    if(bb == NULL) {
+        throwIllegalArgumentException(e, "Buffer was null");
+    }
     return P2J((*e)->GetDirectBufferAddress(e, bb));
 }
 

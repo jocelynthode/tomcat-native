@@ -306,7 +306,7 @@ typedef struct {
  */
 void        SSL_init_app_data2_3_idx(void);
 /* The app_data2 is used to store the tcn_ssl_ctxt_t pointer for the SSL instance. */ 
-void       *SSL_get_app_data2(SSL *);
+tcn_ssl_ctxt_t *SSL_get_app_data2(SSL *ssl);
 void        SSL_set_app_data2(SSL *, void *);
 /* The app_data3 is used to store the handshakeCount pointer for the SSL instance. */
 void       *SSL_get_app_data3(const SSL *);

@@ -14,6 +14,40 @@
  * limitations under the License.
  */
 
+
+/*TODO: Do we need  all this ?
+    #include "utssl.h"
+
+    #include <dlfcn.h>
+
+
+    #if defined(SSL_OP_NO_TLSv1_1)
+    #define HAVE_TLSV1_1
+    #endif
+
+    #if defined(SSL_OP_NO_TLSv1_2)
+    #define HAVE_TLSV1_2
+    #endif
+
+    #ifdef __APPLE__
+    #define LIBCRYPTO_NAME "libcrypto.dylib"
+    #else
+    #define LIBCRYPTO_NAME "libcrypto"
+    #endif
+
+    #ifdef __APPLE__
+    #define LIBSSL_NAME "libssl.dylib"
+    #else
+    #define LIBSSL_NAME "libssl"
+    #endif
+
+    #define REQUIRE_SSL_SYMBOL(symb) ssl_methods.symb = dlsym(ssl, #symb); if(ssl_methods.symb == 0) { printf("Failed to find %s", #symb); throwIllegalStateException(e, "Could not load required symbol from libssl: " #symb); return 1;}
+    #define GET_SSL_SYMBOL(symb) ssl_methods.symb = dlsym(ssl, #symb);
+    #define REQUIRE_CRYPTO_SYMBOL(symb) crypto_methods.symb = dlsym(crypto, #symb); if(crypto_methods.symb == 0) {printf("Failed to find %s", #symb); throwIllegalStateException(e, "Could not load required symbol from libcrypto: " #symb); return 1;}
+    #define GET_CRYPTO_SYMBOL(symb) crypto_methods.symb = dlsym(crypto, #symb);
+
+*/
+
 #include "tcn.h"
 
 #ifdef HAVE_OPENSSL
@@ -524,17 +558,16 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     ERR_load_crypto_strings();
     SSL_load_error_strings();
     SSL_library_init();
-    OpenSSL_add_all_algorithms();
+    OPENSSL_add_all_algorithms_noconf();
 #if HAVE_ENGINE_LOAD_BUILTIN_ENGINES
     ENGINE_load_builtin_engines();
 #endif
     OPENSSL_load_builtin_modules();
 
     /* Initialize thread support */
-    ssl_thread_setup(tcn_global_pool);
+    ssl_thread_setup();
 
- //TODO: Remove exceptions and take CONSTANTS
-#ifndef OPENSSL_NO_ENGINE
+ //TODO: Remove exceptions and take CONSTANTS and is it necessary ?
     if (J2S(engine)) {
         ENGINE *ee = NULL;
         apr_status_t err = APR_SUCCESS;
@@ -563,26 +596,28 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
         }
         tcn_ssl_engine = ee;
     }
-#endif
 
+    /* For SSL_get_app_data2() and SSL_get_app_data3() at request time */
+    SSL_init_app_data2_3_idx();
+
+    //TODO: Keep it ?
     memset(&tcn_password_callback, 0, sizeof(tcn_pass_cb_t));
     /* Initialize PRNG
      * This will in most cases call the builtin
      * low entropy seed.
      */
     SSL_rand_seed(NULL);
-    /* For SSL_get_app_data2() and SSL_get_app_data3() at request time */
-    SSL_init_app_data2_3_idx();
 
     init_dh_params();
-
+    //TODO END
     /*
      * Let us cleanup the ssl library when the library is unloaded
      */
       //TODO: Remove or Rewrite ?
-    apr_pool_cleanup_register(tcn_global_pool, NULL,
+    /*apr_pool_cleanup_register(tcn_global_pool, NULL,
                               ssl_init_cleanup,
                               apr_pool_cleanup_null);
+                              */
     TCN_FREE_CSTRING(engine);
 
     /* Cache the byte[].class for performance reasons */
@@ -593,6 +628,9 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     sClazz = (*e)->FindClass(e, "java/lang/String");
     stringClass = (jclass) (*e)->NewGlobalRef(e, sClazz);
 
+    //TODO: add those ?
+    //alpn_init(e);
+    //session_init(e);
     return (jint)APR_SUCCESS;
 }
 
@@ -694,21 +732,10 @@ static apr_status_t generic_bio_cleanup(void *data)
     return APR_SUCCESS;
 }
 
- //TODO: Remove pool
 void SSL_BIO_close(BIO *bi)
 {
     if (bi == NULL)
         return;
-    if (bi->ptr != NULL && (bi->flags & SSL_BIO_FLAG_CALLBACK)) {
-        BIO_JAVA *j = (BIO_JAVA *)bi->ptr;
-        j->refcount--;
-        if (j->refcount == 0) {
-            if (j->pool)
-                apr_pool_cleanup_run(j->pool, bi, generic_bio_cleanup);
-            else
-                BIO_free(bi);
-        }
-    }
     else
         BIO_free(bi);
 }
@@ -935,14 +962,14 @@ TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
     TCN_ASSERT(ctx != 0);
     ssl = SSL_new(c->ctx);
     if (ssl == NULL) {
-        tcn_ThrowException(e, "cannot create new ssl");
+        throwIllegalStateException(e, "cannot create new ssl");
         return 0;
     }
-    if ((con = apr_pcalloc(c->pool, sizeof(tcn_ssl_conn_t))) == NULL) {
-        tcn_ThrowAPRException(e, apr_get_os_error());
+    if ((con = malloc(sizeof(tcn_ssl_conn_t))) == NULL) {
+        throwIllegalStateException(e, "Failed to allocate memory");
         return 0;
     }
-    con->pool = c->pool;
+    memset(con, 0, sizeof(*con));
     con->ctx  = c;
     con->ssl  = ssl;
     con->shutdown_type = c->shutdown_type;
@@ -962,11 +989,12 @@ TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
 
     /* Setup verify and seed */
     SSL_set_verify_result(ssl, X509_V_OK);
-    SSL_rand_seed(c->rand_file);
+    //TODO: do we need our seed? It seems the default seed should be more secure
+    //SSL_rand_seed(c->rand_file);
 
     /* Store for later usage in SSL_callback_SSL_verify */
     SSL_set_app_data2(ssl, c);
-    SSL_set_app_data(ssl, con);
+    SSL_set_ex_data(ssl,0,(char *)con);
     return P2J(ssl);
 }
 
@@ -1045,6 +1073,13 @@ TCN_IMPLEMENT_CALL(void, SSL, freeSSL)(TCN_STDARGS,
     if (handshakeCount != NULL) {
         free(handshakeCount);
     }
+
+    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl_, 0);
+    if(con->alpn_selection_callback != NULL) {
+        (*e)->DeleteGlobalRef(e, con->alpn_selection_callback);
+    }
+    free(con);
+
     SSL_free(ssl_);
 }
 
@@ -1058,16 +1093,16 @@ TCN_IMPLEMENT_CALL(jlong, SSL, makeNetworkBIO)(TCN_STDARGS,
     UNREFERENCED(o);
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         goto fail;
     }
 
-    if (BIO_new_bio_pair(&internal_bio, 0, &network_bio, 0) != 1) {
-        tcn_ThrowException(e, "BIO_new_bio_pair failed");
+    if (crypto_methods.BIO_new_bio_pair(&internal_bio, 0, &network_bio, 0) != 1) {
+        throwIllegalStateException(e, "BIO_new_bio_pair failed");
         goto fail;
     }
 
-    SSL_set_bio(ssl_, internal_bio, internal_bio);
+    ssl_methods.SSL_set_bio(ssl_, internal_bio, internal_bio);
 
     return P2J(network_bio);
  fail:
@@ -1098,7 +1133,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getCipherForSSL)(TCN_STDARGS,
 {
     UNREFERENCED_STDARGS;
 
-    return AJP_TO_JSTRING(SSL_get_cipher(J2P(ssl, SSL*)));
+    return AJP_TO_JSTRING(SSL_CIPHER_get_name(SSL_get_current_cipher(J2P(ssl, SSL*))));
 }
 
 /* Read which protocol was negotiated for the given SSL *. */
@@ -1118,10 +1153,10 @@ TCN_IMPLEMENT_CALL(jint, SSL, isInInit)(TCN_STDARGS,
     UNREFERENCED(o);
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return 0;
     } else {
-        return SSL_in_init(ssl_);
+        return (SSL_state(ssl_) & SSL_ST_INIT) || SSL_renegotiate_pending(ssl_);
     }
 }
 
@@ -1129,7 +1164,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, doHandshake)(TCN_STDARGS,
                                            jlong ssl /* SSL * */) {
     SSL *ssl_ = J2P(ssl, SSL *);
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return 0;
     }
 
@@ -1142,7 +1177,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, renegotiate)(TCN_STDARGS,
                                            jlong ssl /* SSL * */) {
     SSL *ssl_ = J2P(ssl, SSL *);
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return 0;
     }
 
@@ -1206,7 +1241,7 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getPeerCertChain)(TCN_STDARGS,
     SSL *ssl_ = J2P(ssl, SSL *);
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return NULL;
     }
 
@@ -1259,7 +1294,7 @@ TCN_IMPLEMENT_CALL(jbyteArray, SSL, getPeerCertificate)(TCN_STDARGS,
     SSL *ssl_ = J2P(ssl, SSL *);
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return NULL;
     }
 
@@ -1415,7 +1450,7 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getCiphers)(TCN_STDARGS, jlong ssl)
     UNREFERENCED_STDARGS;
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return NULL;
     }
 
@@ -1450,7 +1485,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, setCipherSuites)(TCN_STDARGS, jlong ssl,
     UNREFERENCED_STDARGS;
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");(e, "ssl is null");
         return JNI_FALSE;
     }
 
@@ -1461,7 +1496,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, setCipherSuites)(TCN_STDARGS, jlong ssl,
     if (!SSL_set_cipher_list(ssl_, J2S(ciphers))) {
         char err[256];
         ERR_error_string(ERR_get_error(), err);
-        tcn_Throw(e, "Unable to configure permitted SSL ciphers (%s)", err);
+        throwIllegalStateException(e, err);
         rv = JNI_FALSE;
     }
     TCN_FREE_CSTRING(ciphers);

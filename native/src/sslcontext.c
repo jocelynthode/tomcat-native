@@ -27,60 +27,6 @@
 #include "ssl_private.h"
 
 static jclass byteArrayClass;
-
-static apr_status_t ssl_context_cleanup(void *data)
-{
-    tcn_ssl_ctxt_t *c = (tcn_ssl_ctxt_t *)data;
-    if (c) {
-        int i;
-        if (c->crl)
-            X509_STORE_free(c->crl);
-        c->crl = NULL;
-        if (c->ctx)
-            SSL_CTX_free(c->ctx);
-        c->ctx = NULL;
-        for (i = 0; i < SSL_AIDX_MAX; i++) {
-            if (c->certs[i]) {
-                X509_free(c->certs[i]);
-                c->certs[i] = NULL;
-            }
-            if (c->keys[i]) {
-                EVP_PKEY_free(c->keys[i]);
-                c->keys[i] = NULL;
-            }
-        }
-        if (c->bio_is) {
-            SSL_BIO_close(c->bio_is);
-            c->bio_is = NULL;
-        }
-        if (c->bio_os) {
-            SSL_BIO_close(c->bio_os);
-            c->bio_os = NULL;
-        }
-
-        if (c->verifier) {
-            JNIEnv *e;
-            tcn_get_java_env(&e);
-            (*e)->DeleteGlobalRef(e, c->verifier);
-            c->verifier = NULL;
-        }
-        c->verifier_method = NULL;
-
-        if (c->next_proto_data) {
-            free(c->next_proto_data);
-            c->next_proto_data = NULL;
-        }
-        c->next_proto_len = 0;
-
-        if (c->alpn_proto_data) {
-            free(c->alpn_proto_data);
-            c->alpn_proto_data = NULL;
-        }
-        c->alpn_proto_len = 0;
-    }
-    return APR_SUCCESS;
-}
-
 static jclass    ssl_context_class;
 static jmethodID sni_java_callback;
 
@@ -98,11 +44,12 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
     jstring hostname;
     jlong original_ssl_context, new_ssl_context;
     tcn_ssl_ctxt_t *new_c;
-    
+
+    //TODO maybe uncomment
     // Continue only if the static method exists
-    if (sni_java_callback == NULL) {
-        return SSL_TLSEXT_ERR_OK;
-    }
+    //if (sni_java_callback == NULL) {
+    //    return SSL_TLSEXT_ERR_OK;
+    //}
     
     (*javavm)->AttachCurrentThread(javavm, (void **)&env, NULL);
 
@@ -111,7 +58,7 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 
     // Convert to Java compatible parameters ready for the method call
     hostname = (*env)->NewStringUTF(env, servername);
-    original_ssl_context = P2J(c);
+    original_ssl_context = P2J(c->ctx); //TODO switched from c to c->ctx
     
     new_ssl_context = (*env)->CallStaticLongMethod(env,
                                                    ssl_context_class,
@@ -121,11 +68,12 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 
     // Delete the local reference as this method is called via callback.
     // Otherwise local references are only freed once jni method returns.
-    (*env)->DeleteLocalRef(env, hostname);
+    //(*env)->DeleteLocalRef(env, hostname);
+    //TODO maybe uncomment
 
     if (new_ssl_context != 0 && new_ssl_context != original_ssl_context) {
-        new_c = J2P(new_ssl_context, tcn_ssl_ctxt_t *);
-        SSL_set_SSL_CTX(ssl, new_c->ctx);
+        new_c = J2P(new_ssl_context, SSL_CTX *);
+        SSL_set_SSL_CTX(ssl, new_c);
     }
 
     return SSL_TLSEXT_ERR_OK;
@@ -133,17 +81,16 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 
 /* Initialize server context */
 //TODO: Take from ssl.c in ssl-experiments
-TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
+TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
                                             jint protocol, jint mode)
 {
-    apr_pool_t *p = J2P(pool, apr_pool_t *);
     tcn_ssl_ctxt_t *c = NULL;
     SSL_CTX *ctx = NULL;
     jclass clazz;
 
     UNREFERENCED(o);
     if (protocol == SSL_PROTOCOL_NONE) {
-        tcn_Throw(e, "No SSL protocols requested");
+        throwIllegalStateException(e, "No SSL protocols requested");
         goto init_failed;
     }
 
@@ -213,11 +160,11 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
         tcn_Throw(e, "Invalid Server SSL Protocol (%s)", err);
         goto init_failed;
     }
-    //TODO: Use malloc ? and remove exception
-    if ((c = apr_pcalloc(p, sizeof(tcn_ssl_ctxt_t))) == NULL) {
-        tcn_ThrowAPRException(e, apr_get_os_error());
+    if ((c = malloc(sizeof(tcn_ssl_ctxt_t))) == NULL) {
+        throwIllegalStateException(e, "malloc failed");
         goto init_failed;
     }
+    memset(c, 0, sizeof(*c));
 
     c->protocol = protocol;
     c->mode     = mode;
@@ -245,6 +192,7 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
      * Configure additional context ingredients
      */
     SSL_CTX_set_options(c->ctx, SSL_OP_SINGLE_DH_USE);
+//TODO: what do we do with these defines?
 #ifdef HAVE_ECC
     SSL_CTX_set_options(c->ctx, SSL_OP_SINGLE_ECDH_USE);
 #endif
@@ -287,9 +235,10 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
     c->shutdown_type = SSL_SHUTDOWN_TYPE_UNSET;
 
     /* Set default password callback */
-    SSL_CTX_set_default_passwd_cb(c->ctx, (pem_password_cb *)SSL_password_callback);
-    SSL_CTX_set_default_passwd_cb_userdata(c->ctx, (void *)(&tcn_password_callback));
-    SSL_CTX_set_info_callback(c->ctx, SSL_callback_handshake);
+    //TODO: fixme, do we need to support these callbacks?
+    //SSL_CTX_set_default_passwd_cb(c->ctx, (pem_password_cb *)SSL_password_callback);
+    //SSL_CTX_set_default_passwd_cb_userdata(c->ctx, (void *)(&tcn_password_callback));
+    //ssl_methods.SSL_CTX_set_info_callback(c->ctx, SSL_callback_handshake);
 
     /* Cache Java side SNI callback if not already cached */
     if (ssl_context_class == NULL) {
@@ -310,10 +259,10 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
      * Let us cleanup the ssl context when the pool is destroyed
      */
      //TODO: Do we still have to cleanup with no pool ?
-    apr_pool_cleanup_register(p, (const void *)c,
+    /*apr_pool_cleanup_register(p, (const void *)c,
                               ssl_context_cleanup,
                               apr_pool_cleanup_null);
-
+    */
     /* Cache the byte[].class for performance reasons */
     clazz = (*e)->FindClass(e, "[B");
     byteArrayClass = (jclass) (*e)->NewGlobalRef(e, clazz);
@@ -323,14 +272,62 @@ init_failed:
     return 0;
 }
 
-TCN_IMPLEMENT_CALL(jint, SSLContext, free)(TCN_STDARGS, jlong ctx)
+UT_OPENSSL(jint, freeSSLContext)(JNIEnv *e, jobject o, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
     UNREFERENCED_STDARGS;
-    TCN_ASSERT(ctx != 0);
     /* Run and destroy the cleanup callback */
-    //TODO: Do we still have to cleanup with no pool ?
-    return apr_pool_cleanup_run(c->pool, c, ssl_context_cleanup);
+    if (c) {
+        int i;
+        if (c->crl) {
+            X509_STORE_free(c->crl);
+        }
+        c->crl = NULL;
+        if (c->ctx) {
+            SSL_CTX_free(c->ctx);
+        }
+        c->ctx = NULL;
+        for (i = 0; i < SSL_AIDX_MAX; i++) {
+            if (c->certs[i]) {
+                X509_free(c->certs[i]);
+                c->certs[i] = NULL;
+            }
+            if (c->keys[i]) {
+                printf("b %d", i);
+                EVP_PKEY_free(c->keys[i]);
+                c->keys[i] = NULL;
+            }
+        }
+        if (c->bio_is) {
+            SSL_BIO_close(c->bio_is);
+            c->bio_is = NULL;
+        }
+        if (c->bio_os) {
+            SSL_BIO_close(c->bio_os);
+            c->bio_os = NULL;
+        }
+
+        if (c->verifier) {
+            JNIEnv *e;
+            tcn_get_java_env(&e);
+            (*e)->DeleteGlobalRef(e, c->verifier);
+            c->verifier = NULL;
+        }
+        c->verifier_method = NULL;
+
+        if (c->next_proto_data) {
+            free(c->next_proto_data);
+            c->next_proto_data = NULL;
+        }
+        c->next_proto_len = 0;
+
+        if (c->alpn_proto_data) {
+            free(c->alpn_proto_data);
+            c->alpn_proto_data = NULL;
+        }
+        c->alpn_proto_len = 0;
+    }
+    return 0;
 }
 
 TCN_IMPLEMENT_CALL(void, SSLContext, setOptions)(TCN_STDARGS, jlong ctx,
@@ -685,132 +682,87 @@ cleanup:
     return rc;
 }
 
-TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS, jlong ctx,
-                                                         jstring cert, jstring key,
-                                                         jstring password, jint idx)
+//TODO: straight copy from ssl-experiments but maybe not a good idea
+TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS,jlong ctx,
+                                                       jbyteArray javaCert,
+                                                       jbyteArray javaKey, jint idx)
 {
+    /* we get the key contents into a byte array */
+    jbyte* bufferPtr = (*e)->GetByteArrayElements(e, javaKey, NULL);
+    jsize lengthOfKey = (*e)->GetArrayLength(e, javaKey);
+    unsigned char* key = malloc(lengthOfKey);
+    memcpy(key, bufferPtr, lengthOfKey);
+    (*e)->ReleaseByteArrayElements(e, javaKey, bufferPtr, 0);
+
+    bufferPtr = (*e)->GetByteArrayElements(e, javaCert, NULL);
+    jsize lengthOfCert = (*e)->GetArrayLength(e, javaCert);
+    unsigned char* cert = malloc(lengthOfCert);
+    memcpy(cert, bufferPtr, lengthOfCert);
+    (*e)->ReleaseByteArrayElements(e, javaCert, bufferPtr, 0);
+
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
     jboolean rv = JNI_TRUE;
-    TCN_ALLOC_CSTRING(cert);
-    TCN_ALLOC_CSTRING(key);
-    TCN_ALLOC_CSTRING(password);
-    const char *key_file, *cert_file;
-    const char *p;
     char err[256];
-#ifdef HAVE_ECC
-    EC_GROUP *ecparams;
-    int nid;
-    EC_KEY *eckey = NULL;
-#endif
-    DH *dhparams;
 
     UNREFERENCED(o);
     TCN_ASSERT(ctx != 0);
 
     if (idx < 0 || idx >= SSL_AIDX_MAX) {
-        /* TODO: Throw something */
+        throwIllegalStateException(e, "Invalid key type");
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (J2S(password)) {
-        if (!c->cb_data)
-            c->cb_data = &tcn_password_callback;
-        strncpy(c->cb_data->password, J2S(password), SSL_MAX_PASSWORD_LEN);
-        c->cb_data->password[SSL_MAX_PASSWORD_LEN-1] = '\0';
-    }
-    key_file  = J2S(key);
-    cert_file = J2S(cert);
-    if (!key_file)
-        key_file = cert_file;
-    if (!key_file || !cert_file) {
-        tcn_Throw(e, "No Certificate file specified or invalid file format");
+    const unsigned char *tmp = (const unsigned char *)cert;
+    if ((c->certs[idx] = crypto_methods.d2i_X509(NULL, &tmp, lengthOfCert)) == NULL) {
+        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
+        throwIllegalStateException(e, err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if ((p = strrchr(cert_file, '.')) != NULL && strcmp(p, ".pkcs12") == 0) {
-        if (!ssl_load_pkcs12(c, cert_file, &c->keys[idx], &c->certs[idx], 0)) {
-            ERR_error_string(ERR_get_error(), err);
-            tcn_Throw(e, "Unable to load certificate %s (%s)",
-                      cert_file, err);
-            rv = JNI_FALSE;
-            goto cleanup;
-        }
+
+    EVP_PKEY * evp = malloc(sizeof(EVP_PKEY));
+    memset(evp, 0, sizeof(EVP_PKEY));
+    if(c->keys[idx] != NULL) {
+        free(c->keys[idx]);
     }
-    else {
-        if ((c->keys[idx] = load_pem_key(c, key_file)) == NULL) {
-            ERR_error_string(ERR_get_error(), err);
-            tcn_Throw(e, "Unable to load certificate key %s (%s)",
-                      key_file, err);
-            rv = JNI_FALSE;
-            goto cleanup;
-        }
-        if ((c->certs[idx] = load_pem_cert(c, cert_file)) == NULL) {
-            ERR_error_string(ERR_get_error(), err);
-            tcn_Throw(e, "Unable to load certificate %s (%s)",
-                      cert_file, err);
-            rv = JNI_FALSE;
-            goto cleanup;
-        }
+    c->keys[idx] = evp;
+
+    BIO * bio = crypto_methods.BIO_new(crypto_methods.BIO_s_mem());
+    crypto_methods.BIO_write(bio, key, lengthOfKey);
+
+    c->keys[idx] = crypto_methods.PEM_read_bio_PrivateKey(bio, NULL, 0, NULL);
+    crypto_methods.BIO_free(bio);
+    if (c->keys[idx] == NULL) {
+        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
+        throwIllegalStateException(e, err);
+        rv = JNI_FALSE;
+        goto cleanup;
     }
-    if (SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
-        ERR_error_string(ERR_get_error(), err);
+
+    if (ssl_methods.SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
+        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
         tcn_Throw(e, "Error setting certificate (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
-        ERR_error_string(ERR_get_error(), err);
+    if (ssl_methods.SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
+        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
         tcn_Throw(e, "Error setting private key (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (SSL_CTX_check_private_key(c->ctx) <= 0) {
-        ERR_error_string(ERR_get_error(), err);
+    if (ssl_methods.SSL_CTX_check_private_key(c->ctx) <= 0) {
+        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
         tcn_Throw(e, "Private key does not match the certificate public key (%s)",
                   err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-
-    /*
-     * Try to read DH parameters from the (first) SSLCertificateFile
-     */
-    /* XXX Does this also work for pkcs12 or only for PEM files?
-     * If only for PEM files move above to the PEM handling */
-    if ((idx == 0) && (dhparams = SSL_dh_GetParamFromFile(cert_file))) {
-        SSL_CTX_set_tmp_dh(c->ctx, dhparams);
-    }
-
-#ifdef HAVE_ECC
-    /*
-     * Similarly, try to read the ECDH curve name from SSLCertificateFile...
-     */
-    /* XXX Does this also work for pkcs12 or only for PEM files?
-     * If only for PEM files move above to the PEM handling */
-    if ((ecparams = SSL_ec_GetParamFromFile(cert_file)) &&
-        (nid = EC_GROUP_get_curve_name(ecparams)) &&
-        (eckey = EC_KEY_new_by_curve_name(nid))) {
-        SSL_CTX_set_tmp_ecdh(c->ctx, eckey);
-    }
-    /*
-     * ...otherwise, configure NIST P-256 (required to enable ECDHE)
-     */
-    else {
-#if defined(SSL_CTX_set_ecdh_auto)
-        SSL_CTX_set_ecdh_auto(c->ctx, 1);
-#else
-        eckey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-        SSL_CTX_set_tmp_ecdh(c->ctx, eckey);
-#endif
-    }
-    EC_KEY_free(eckey);
-#endif
-    SSL_CTX_set_tmp_dh_callback(c->ctx, SSL_callback_tmp_DH);
+    //TODO: read DH and ECC params?
 
 cleanup:
-    TCN_FREE_CSTRING(cert);
-    TCN_FREE_CSTRING(key);
-    TCN_FREE_CSTRING(password);
+    free(key);
+    free(cert);
     return rv;
 }
 
