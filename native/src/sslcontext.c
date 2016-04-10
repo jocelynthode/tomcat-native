@@ -132,7 +132,7 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 }
 
 /* Initialize server context */
-//TODO: Remove pool
+//TODO: Take from ssl.c in ssl-experiments
 TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS, jlong pool,
                                             jint protocol, jint mode)
 {

@@ -498,7 +498,7 @@ static int ssl_rand_make(const char *file, int len, int base64)
     return r > 0 ? 1 : 0;
 }
 
- //TODO: Remove Pool
+ //TODO: Check method in ssl.c in ssl-experiments to see if we can take it and change dynamic to static
 TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
     jclass clazz;
@@ -507,11 +507,6 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     TCN_ALLOC_CSTRING(engine);
 
     UNREFERENCED(o);
-    if (!tcn_global_pool) {
-        TCN_FREE_CSTRING(engine);
-        tcn_ThrowAPRException(e, APR_EINVAL);
-        return (jint)APR_EINVAL;
-    }
     /* Check if already initialized */
     if (ssl_initialized++) {
         TCN_FREE_CSTRING(engine);
@@ -681,14 +676,14 @@ TCN_IMPLEMENT_CALL(jint, SSL, fipsModeSet)(TCN_STDARGS, jint mode)
     return r;
 }
 
-/* OpenSSL Java Stream BIO */
+/* OpenSSL Java Stream BIO */ //TODO: Remove all BIO ?
 
 typedef struct  {
     int            refcount;
     tcn_callback_t cb;
 } BIO_JAVA;
 
- //TODO: Change type
+ //TODO: Change type or remove BIO ?
 static apr_status_t generic_bio_cleanup(void *data)
 {
     BIO *b = (BIO *)data;
@@ -926,7 +921,7 @@ static void ssl_info_callback(const SSL *ssl, int where, int ret) {
     }
 }
 
- //TODO: Rwrite malloc
+ //TODO: Take from ssl.c in ssl-experiments and rewrite so that we don't use dynamic functions
 TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
                                                    jlong ctx /* tcn_ssl_ctxt_t * */,
                                                    jboolean server) {
