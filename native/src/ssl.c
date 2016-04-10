@@ -65,6 +65,11 @@ static jclass byteArrayClass;
 static jclass stringClass;
 
 
+static jclass sessionContextClass;
+static jmethodID sessionInit;
+static jmethodID sessionRemove;
+
+
 /* Dynamic lock structure */ //TODO also in threads.c
 struct CRYPTO_dynlock_value {
     const char* file;
@@ -290,6 +295,14 @@ DH *SSL_get_dh_params(unsigned keylen)
 
     return NULL; /* impossible to reach. */
 }
+
+void session_init(JNIEnv *e) {
+    jclass sClazz = (*e)->FindClass(e, "io/undertow/openssl/OpenSSLSessionContext");
+    sessionContextClass = (jclass) (*e)->NewGlobalRef(e, sClazz);
+    sessionInit = (*e)->GetMethodID(e, sessionContextClass, "sessionCreatedCallback", "(JJ[B)V");
+    sessionRemove = (*e)->GetMethodID(e, sessionContextClass, "sessionRemovedCallback", "([B)V");
+}
+
 
 TCN_IMPLEMENT_CALL(jint, SSL, version)(TCN_STDARGS)
 {
@@ -1344,12 +1357,7 @@ TCN_IMPLEMENT_CALL(jlong, SSL, getTime)(TCN_STDARGS, jlong ssl)
     UNREFERENCED(o);
 
     session  = SSL_get_session(ssl_);
-    if (session) {
-        return SSL_get_time(session);
-    } else {
-        tcn_ThrowException(e, "ssl session is null");
-        return 0;
-    }
+    return SSL_get_time(session);
 }
 
 TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
@@ -1503,29 +1511,85 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, setCipherSuites)(TCN_STDARGS, jlong ssl,
     return rv;
 }
 
-TCN_IMPLEMENT_CALL(jbyteArray, SSL, getSessionId)(TCN_STDARGS, jlong ssl)
-{
+jbyteArray getSessionId(JNIEnv *e, SSL_SESSION *session) {
 
     unsigned int len;
     const unsigned char *session_id;
-    const SSL_SESSION *session;
-    jbyteArray bArray;
-    SSL *ssl_ = J2P(ssl, SSL *);
-    if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
-        return NULL;
-    }
-    UNREFERENCED(o);
-    session = SSL_get_session(ssl_);
-    session_id = SSL_SESSION_get_id(session, &len);
+    session_id = ssl_methods.SSL_SESSION_get_id(session, &len);
 
     if (len == 0 || session_id == NULL) {
         return NULL;
     }
 
+    jbyteArray bArray;
     bArray = (*e)->NewByteArray(e, len);
     (*e)->SetByteArrayRegion(e, bArray, 0, len, (jbyte*) session_id);
     return bArray;
+}
+
+TCN_IMPLEMENT_CALL(jbyteArray, SSL, getSessionId)(TCN_STDARGS, jlong ssl)
+{
+
+    SSL_SESSION *session;
+    SSL *ssl_ = J2P(ssl, SSL *);
+    if (ssl_ == NULL) {
+        throwIllegalStateException(e, "ssl is null");
+        return NULL;
+    }
+    session = ssl_methods.SSL_get_session(ssl_);
+    return getSessionId(e, session);
+}
+
+TCN_IMPLEMENT_CALL(void, SSL, registerSessionContext)(TCN_STDARGS, jlong ctx, jobject context) {
+    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
+    c->session_context = (*e)->NewGlobalRef(e, context);
+}
+
+int new_session_cb(SSL * ssl, SSL_SESSION * session) {
+    tcn_ssl_ctxt_t  *c = SSL_get_app_data2(ssl);
+
+    JavaVM *javavm = tcn_get_java_vm();
+    JNIEnv *e;
+    (*javavm)->AttachCurrentThread(javavm, (void **)&e, NULL);
+    jbyteArray sessionId = getSessionId(e, session);
+
+    (*e)->CallVoidMethod(e, c->session_context, sessionInit, ssl, session, sessionId);
+
+    (*javavm)->DetachCurrentThread(javavm);
+    return 1;
+}
+void remove_session_cb(SSL_CTX *ctx, SSL_SESSION * session) {
+     tcn_ssl_ctxt_t  *c = ssl_methods.SSL_CTX_get_ex_data(ctx,0);
+    JavaVM *javavm = tcn_get_java_vm();
+    JNIEnv *e;
+    (*javavm)->AttachCurrentThread(javavm, (void **)&e, NULL);
+    jbyteArray sessionId = getSessionId(e, session);
+
+    (*e)->CallVoidMethod(e, c->session_context, sessionRemove, sessionId);
+
+    (*javavm)->DetachCurrentThread(javavm);
+}
+
+void setup_session_context(JNIEnv *e, tcn_ssl_ctxt_t *c) {
+ /* Default session context id and cache size */
+    ssl_methods.SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_SIZE,SSL_DEFAULT_CACHE_SIZE,NULL);
+    /* Session cache is disabled by default */
+	ssl_methods.SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_MODE,SSL_SESS_CACHE_OFF,NULL);
+    /* Longer session timeout */
+    ssl_methods.SSL_CTX_set_timeout(c->ctx, 14400);
+
+    ssl_methods.SSL_CTX_sess_set_new_cb(c->ctx, &new_session_cb);
+    ssl_methods.SSL_CTX_sess_set_remove_cb(c->ctx, &remove_session_cb);
+}
+
+
+TCN_IMPLEMENT_CALL(void, SSL, invalidateSession)(TCN_STDARGS, jlong ses) {
+    SSL_SESSION *session = J2P(ses, SSL_SESSION *);
+    if (session == NULL) {
+        throwIllegalStateException(e, "ssl is null");
+        return;
+    }
+    ssl_methods.SSL_SESSION_free(session);
 }
 
 TCN_IMPLEMENT_CALL(jint, SSL, getHandshakeCount)(TCN_STDARGS, jlong ssl)
