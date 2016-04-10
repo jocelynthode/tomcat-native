@@ -15,37 +15,27 @@
  */
 
 #include "tcn.h"
-//TODO: Remove apr
-#include "apr_file_io.h"
-#include "apr_thread_mutex.h"
-#include "apr_atomic.h"
-#include "apr_poll.h"
 
 #ifdef HAVE_OPENSSL
 #include "ssl_private.h"
 
 static int ssl_initialized = 0;
 static char *ssl_global_rand_file = NULL;
-extern apr_pool_t *tcn_global_pool;
 
 ENGINE *tcn_ssl_engine = NULL;
 tcn_pass_cb_t tcn_password_callback;
 
-//TODO: Remove because we don't need pool ?
-/* Global reference to the pool used by the dynamic mutexes */
-static apr_pool_t *dynlockpool = NULL;
 
 /* From netty-tcnative */
 static jclass byteArrayClass;
 static jclass stringClass;
 
-//TODO: remove pool
-/* Dynamic lock structure */
+
+/* Dynamic lock structure */ //TODO also in threads.c
 struct CRYPTO_dynlock_value {
-    apr_pool_t *pool;
     const char* file;
     int line;
-    apr_thread_mutex_t *mutex;
+    pthread_mutex_t *mutex;
 };
 
 /*
@@ -356,50 +346,6 @@ static ENGINE *ssl_try_load_engine(const char *engine)
 }
 #endif
 
-/*
- * To ensure thread-safetyness in OpenSSL
- */
-//TODO: use pthread_mutex_lock that are in threads.c
-static apr_thread_mutex_t **ssl_lock_cs;
-static int                  ssl_lock_num_locks;
-
-static void ssl_thread_lock(int mode, int type,
-                            const char *file, int line)
-{
-    UNREFERENCED(file);
-    UNREFERENCED(line);
-    if (type < ssl_lock_num_locks) {
-        if (mode & CRYPTO_LOCK) {
-            apr_thread_mutex_lock(ssl_lock_cs[type]);
-        }
-        else {
-            apr_thread_mutex_unlock(ssl_lock_cs[type]);
-        }
-    }
-}
-
-
-//TODO: Rewrite code
-static unsigned long ssl_thread_id(void)
-{
-    /* OpenSSL needs this to return an unsigned long.  On OS/390, the pthread
-     * id is a structure twice that big.  Use the TCB pointer instead as a
-     * unique unsigned long.
-     */
-#ifdef __MVS__
-    struct PSA {
-        char unmapped[540];
-        unsigned long PSATOLD;
-    } *psaptr = 0;
-
-    return psaptr->PSATOLD;
-#elif defined(WIN32)
-    return (unsigned long)GetCurrentThreadId();
-#else
-    return (unsigned long)(apr_os_thread_current());
-#endif
-}
-
 //TODO: Rewrite
 static apr_status_t ssl_thread_cleanup(void *data)
 {
@@ -417,116 +363,6 @@ static apr_status_t ssl_thread_cleanup(void *data)
     /* Let the registered mutex cleanups do their own thing
      */
     return APR_SUCCESS;
-}
-
-/*
- * Dynamic lock creation callback
- */
- //TODO: Rewrite
-static struct CRYPTO_dynlock_value *ssl_dyn_create_function(const char *file,
-                                                     int line)
-{
-    struct CRYPTO_dynlock_value *value;
-    apr_pool_t *p;
-    apr_status_t rv;
-
-    /*
-     * We need a pool to allocate our mutex.  Since we can't clear
-     * allocated memory from a pool, create a subpool that we can blow
-     * away in the destruction callback.
-     */
-    rv = apr_pool_create(&p, dynlockpool);
-    if (rv != APR_SUCCESS) {
-        /* TODO log that fprintf(stderr, "Failed to create subpool for dynamic lock"); */
-        return NULL;
-    }
-
-    value = (struct CRYPTO_dynlock_value *)apr_palloc(p,
-                                                      sizeof(struct CRYPTO_dynlock_value));
-    if (!value) {
-        /* TODO log that fprintf(stderr, "Failed to allocate dynamic lock structure"); */
-        return NULL;
-    }
-
-    value->pool = p;
-    /* Keep our own copy of the place from which we were created,
-       using our own pool. */
-    value->file = apr_pstrdup(p, file);
-    value->line = line;
-    rv = apr_thread_mutex_create(&(value->mutex), APR_THREAD_MUTEX_DEFAULT,
-                                p);
-    if (rv != APR_SUCCESS) {
-        /* TODO log that fprintf(stderr, "Failed to create thread mutex for dynamic lock"); */
-        apr_pool_destroy(p);
-        return NULL;
-    }
-    return value;
-}
-
-/*
- * Dynamic locking and unlocking function
- */
-//TODO: Rewrite with pthread
-static void ssl_dyn_lock_function(int mode, struct CRYPTO_dynlock_value *l,
-                           const char *file, int line)
-{
-
-
-    if (mode & CRYPTO_LOCK) {
-        apr_thread_mutex_lock(l->mutex);
-    }
-    else {
-        apr_thread_mutex_unlock(l->mutex);
-    }
-}
-
-/*
- * Dynamic lock destruction callback
- */
- //TODO: Rewrite with pthread and malloc
-static void ssl_dyn_destroy_function(struct CRYPTO_dynlock_value *l,
-                          const char *file, int line)
-{
-    apr_status_t rv;
-    rv = apr_thread_mutex_destroy(l->mutex);
-    if (rv != APR_SUCCESS) {
-        /* TODO log that fprintf(stderr, "Failed to destroy mutex for dynamic lock %s:%d", l->file, l->line); */
-    }
-
-    /* Trust that whomever owned the CRYPTO_dynlock_value we were
-     * passed has no future use for it...
-     */
-    apr_pool_destroy(l->pool);
-}
-
-//TODO: Rewrite with pthread and malloc
-static void ssl_thread_setup(apr_pool_t *p)
-{
-    int i;
-
-    ssl_lock_num_locks = CRYPTO_num_locks();
-    ssl_lock_cs = apr_palloc(p, ssl_lock_num_locks * sizeof(*ssl_lock_cs));
-
-    for (i = 0; i < ssl_lock_num_locks; i++) {
-        apr_thread_mutex_create(&(ssl_lock_cs[i]),
-                                APR_THREAD_MUTEX_DEFAULT, p);
-    }
-
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
-    CRYPTO_set_id_callback(ssl_thread_id);
-#endif
-    CRYPTO_set_locking_callback(ssl_thread_lock);
-
-    /* Set up dynamic locking scaffolding for OpenSSL to use at its
-     * convenience.
-     */
-    dynlockpool = p;
-    CRYPTO_set_dynlock_create_callback(ssl_dyn_create_function);
-    CRYPTO_set_dynlock_lock_callback(ssl_dyn_lock_function);
-    CRYPTO_set_dynlock_destroy_callback(ssl_dyn_destroy_function);
-
-    apr_pool_cleanup_register(p, NULL, ssl_thread_cleanup,
-                              apr_pool_cleanup_null);
 }
 
  //TODO: Rewrite
