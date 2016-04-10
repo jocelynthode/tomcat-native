@@ -113,13 +113,6 @@ JavaVM * tcn_get_java_vm();
 jstring tcn_new_string(JNIEnv *env, const char *str);
 jstring tcn_new_stringn(JNIEnv *env, const char *str, size_t l);
 
-/* TODO: check if needed */
-jbyteArray      tcn_new_arrayb(JNIEnv *, const unsigned char *, size_t);
-jobjectArray    tcn_new_arrays(JNIEnv *env, size_t len);
-char           *tcn_get_string(JNIEnv *, jstring);
-char           *tcn_strdup(JNIEnv *, jstring);
-char           *tcn_pstrdup(JNIEnv *, jstring, apr_pool_t *);
-/* ENDTODO: */
 
 void setup_session_context(JNIEnv *e, tcn_ssl_ctxt_t *c);
 /*thread setup function*/
@@ -142,9 +135,6 @@ void session_init(JNIEnv *e);
 
 #define TCN_FREE_CSTRING(V)      \
     if (c##V) (*e)->ReleaseStringUTFChars(e, V, c##V)
-
-#define TCN_ALLOC_JSTRING(V)     \
-    char *c##V = tcn_get_string(e, (V))
 
 #define AJP_TO_JSTRING(V)   (*e)->NewStringUTF((e), (V))
 

@@ -36,9 +36,6 @@
  * Tomcat Native Public API
  */
 
-/* Return global String class
- */
-jclass tcn_get_string_class(void);
 
 /* Return global JVM initalized on JNI_OnLoad
  */
