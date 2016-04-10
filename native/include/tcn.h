@@ -73,7 +73,6 @@
         (E) = (E)
 
 #define TCN_CLASS_PATH  "org/apache/tcn2/"
-#define TCN_FINFO_CLASS TCN_CLASS_PATH "FileInfo"
 #define TCN_ERROR_CLASS TCN_CLASS_PATH "Error"
 #define TCN_PARENT_IDE  "TCN_PARENT_ID"
 

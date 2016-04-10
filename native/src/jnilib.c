@@ -28,8 +28,6 @@ apr_pool_t *tcn_global_pool = NULL;
 static JavaVM     *tcn_global_vm = NULL;
 
 static jclass    jString_class;
-static jclass    jFinfo_class;
-static jclass    jAinfo_class;
 static jmethodID jString_init;
 static jmethodID jString_getBytes;
 
@@ -52,19 +50,12 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
 
     /* Initialize global java.lang.String class */
     TCN_LOAD_CLASS(env, jString_class, "java/lang/String", JNI_ERR);
-    TCN_LOAD_CLASS(env, jFinfo_class, TCN_FINFO_CLASS, JNI_ERR);
-    //TCN_LOAD_CLASS(env, jAinfo_class, TCN_AINFO_CLASS, JNI_ERR);
 
     TCN_GET_METHOD(env, jString_class, jString_init,
                    "<init>", "([B)V", JNI_ERR);
     TCN_GET_METHOD(env, jString_class, jString_getBytes,
                    "getBytes", "()[B", JNI_ERR);
 
-// Keep or not ?
-    if(tcn_load_finfo_class(env, jFinfo_class) != APR_SUCCESS)
-        return JNI_ERR;
-//    if(tcn_load_ainfo_class(env, jAinfo_class) != APR_SUCCESS)
-//        return JNI_ERR;
 #ifdef WIN32
     {
         char *ppid = getenv(TCN_PARENT_IDE);
@@ -90,6 +81,13 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved)
     if ((*vm)->GetEnv(vm, &ppe, JNI_VERSION_1_2)) {
         return;
     }
+    // TODO: Should we still unload jstring ?
+    // We removed tcn_global_pool, but we still load
+    // jString_class in JNI_OnLoad.
+//    if (tcn_global_pool) {
+//        env  = (JNIEnv *)ppe;
+//        TCN_UNLOAD_CLASS(env, jString_class);
+//    }
 }
 
 jstring tcn_new_stringn(JNIEnv *env, const char *str, size_t l)
