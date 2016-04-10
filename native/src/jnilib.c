@@ -38,10 +38,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
 {
     JNIEnv *env;
     void   *ppe;
-    apr_version_t apv;
-    int apvn;
 
-    UNREFERENCED(reserved);
     if ((*vm)->GetEnv(vm, &ppe, JNI_VERSION_1_4)) {
         return JNI_ERR;
     }
@@ -55,7 +52,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
                    "<init>", "([B)V", JNI_ERR);
     TCN_GET_METHOD(env, jString_class, jString_getBytes,
                    "getBytes", "()[B", JNI_ERR);
-
 #ifdef WIN32
     {
         char *ppid = getenv(TCN_PARENT_IDE);
@@ -114,6 +110,38 @@ jstring tcn_new_string(JNIEnv *env, const char *str)
         return NULL;
     else
         return (*env)->NewStringUTF(env, str);
+}
+
+jint throwIllegalStateException( JNIEnv *env, char *message )
+{
+    jclass exClass;
+    char *className = "java/lang/IllegalStateException";
+
+    exClass = (*env)->FindClass( env, className);
+    return (*env)->ThrowNew( env, exClass, message );
+}
+
+
+jint throwIllegalArgumentException( JNIEnv *env, char *message )
+{
+    jclass exClass;
+    char *className = "java/lang/IllegalArgumentException";
+
+    exClass = (*env)->FindClass( env, className);
+    return (*env)->ThrowNew( env, exClass, message );
+}
+
+void tcn_Throw(JNIEnv *env, char *fmt, ...) {
+    throwIllegalStateException(env, fmt);
+//TODO
+/*
+    char msg[8124] = {'\0'};
+    va_list ap;
+
+    va_start(ap, fmt);
+    snprintf(msg, 8124, fmt, ap);
+    throwIllegalStateException(env, msg);
+    va_end(ap);*/
 }
 
 
