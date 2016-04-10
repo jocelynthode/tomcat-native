@@ -506,7 +506,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 
     TCN_ALLOC_CSTRING(engine);
 
-    UNREFERENCED(o);
+    UNREFERENCED(o); //TODO: Remove ?
     /* Check if already initialized */
     if (ssl_initialized++) {
         TCN_FREE_CSTRING(engine);

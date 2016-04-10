@@ -437,18 +437,6 @@ TCN_IMPLEMENT_CALL(jint, Library, size)(TCN_STDARGS, jint what)
     return 0;
 }
 
-//TODO: Remove because we don't need pool ?
-apr_pool_t *tcn_get_global_pool()
-{
-    if (!tcn_global_pool) {
-        if (apr_pool_create(&tcn_global_pool, NULL) != APR_SUCCESS) {
-            return NULL;
-        }
-        apr_atomic_init(tcn_global_pool);
-    }
-    return tcn_global_pool;
-}
-
 jclass tcn_get_string_class()
 {
     return jString_class;
