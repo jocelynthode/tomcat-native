@@ -918,80 +918,82 @@ int cb_server_alpn(SSL *ssl,
                    const unsigned char **out, unsigned char *outlen,
                    const unsigned char *in, unsigned int inlen, void *arg)
 {
-    tcn_ssl_ctxt_t *tcsslctx = (tcn_ssl_ctxt_t *)arg;
-    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_app_data(ssl);
-    apr_array_header_t *client_protos;
-    apr_array_header_t *proposed_protos;
-    int i;
-    size_t len;
-
-    if (inlen == 0) {
-        // Client specified an empty protocol list. Nothing to negotiate.
-        return SSL_TLSEXT_ERR_ALERT_FATAL;
-    }
-
-    //TODO: Check what this function does ?
-    client_protos = apr_array_make(con->pool , 0, sizeof(char *));
-    for (i = 0; i < inlen; /**/) {
-        /* Grab length of next item from leading length byte */
-        unsigned int plen = in[i++];
-        if (plen + i > inlen) {
-            // The protocol name extends beyond the declared length
-            // of the protocol list.
-            return SSL_TLSEXT_ERR_ALERT_FATAL;
-        }
-        APR_ARRAY_PUSH(client_protos, char*) = apr_pstrndup(con->pool, (const char *)in+i, plen);
-        i += plen;
-    }
-
-    if (tcsslctx->alpn == NULL) {
-        // Server supported protocol names not set.
-        return SSL_TLSEXT_ERR_ALERT_FATAL;
-    }
-
-    if (tcsslctx->alpnlen == 0) {
-        // Server supported protocols is an empty list
-        return SSL_TLSEXT_ERR_ALERT_FATAL;
-    }
-
-    proposed_protos = apr_array_make(con->pool, 0, sizeof(char *));
-    for (i = 0; i < tcsslctx->alpnlen; /**/) {
-        /* Grab length of next item from leading length byte */
-        unsigned int plen = tcsslctx->alpn[i++];
-        if (plen + i > tcsslctx->alpnlen) {
-            // The protocol name extends beyond the declared length
-            // of the protocol list.
-            return SSL_TLSEXT_ERR_ALERT_FATAL;
-        }
-        //TODO: Check what this does
-        APR_ARRAY_PUSH(proposed_protos, char*) = apr_pstrndup(con->pool, (const char *)tcsslctx->alpn+i, plen);
-        i += plen;
-    }
-
-    if (proposed_protos->nelts <= 0) {
-        // Should never happen. The server did not specify any protocols.
-        return SSL_TLSEXT_ERR_ALERT_FATAL;
-    }
-
-    /* Now select the most preferred protocol from the proposals. */
-    *out = APR_ARRAY_IDX(proposed_protos, 0, const unsigned char *);
-    for (i = 1; i < proposed_protos->nelts; ++i) {
-        const char *proto = APR_ARRAY_IDX(proposed_protos, i, const char*);
-        /* Do we prefer it over existing candidate? */
-        if (ssl_cmp_alpn_protos(client_protos, (const char *)*out, proto) < 0) {
-            *out = (const unsigned char*)proto;
-        }
-    }
-
-    len = strlen((const char*)*out);
-    if (len > 255) {
-        // Agreed protocol name too long
-        return SSL_TLSEXT_ERR_ALERT_FATAL;
-    }
-
-    *outlen = (unsigned char)len;
-
-    return SSL_TLSEXT_ERR_OK;
+    // TODO: Support ALPN without using APR
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
+//    tcn_ssl_ctxt_t *tcsslctx = (tcn_ssl_ctxt_t *)arg;
+//    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_app_data(ssl);
+//    apr_array_header_t *client_protos;
+//    apr_array_header_t *proposed_protos;
+//    int i;
+//    size_t len;
+//
+//    if (inlen == 0) {
+//        // Client specified an empty protocol list. Nothing to negotiate.
+//        return SSL_TLSEXT_ERR_ALERT_FATAL;
+//    }
+//
+//    //TODO: Check what this function does ?
+//    client_protos = apr_array_make(con->pool , 0, sizeof(char *));
+//    for (i = 0; i < inlen; /**/) {
+//        /* Grab length of next item from leading length byte */
+//        unsigned int plen = in[i++];
+//        if (plen + i > inlen) {
+//            // The protocol name extends beyond the declared length
+//            // of the protocol list.
+//            return SSL_TLSEXT_ERR_ALERT_FATAL;
+//        }
+//        APR_ARRAY_PUSH(client_protos, char*) = apr_pstrndup(con->pool, (const char *)in+i, plen);
+//        i += plen;
+//    }
+//
+//    if (tcsslctx->alpn == NULL) {
+//        // Server supported protocol names not set.
+//        return SSL_TLSEXT_ERR_ALERT_FATAL;
+//    }
+//
+//    if (tcsslctx->alpnlen == 0) {
+//        // Server supported protocols is an empty list
+//        return SSL_TLSEXT_ERR_ALERT_FATAL;
+//    }
+//
+//    proposed_protos = apr_array_make(con->pool, 0, sizeof(char *));
+//    for (i = 0; i < tcsslctx->alpnlen; /**/) {
+//        /* Grab length of next item from leading length byte */
+//        unsigned int plen = tcsslctx->alpn[i++];
+//        if (plen + i > tcsslctx->alpnlen) {
+//            // The protocol name extends beyond the declared length
+//            // of the protocol list.
+//            return SSL_TLSEXT_ERR_ALERT_FATAL;
+//        }
+//        //TODO: Check what this does
+//        APR_ARRAY_PUSH(proposed_protos, char*) = apr_pstrndup(con->pool, (const char *)tcsslctx->alpn+i, plen);
+//        i += plen;
+//    }
+//
+//    if (proposed_protos->nelts <= 0) {
+//        // Should never happen. The server did not specify any protocols.
+//        return SSL_TLSEXT_ERR_ALERT_FATAL;
+//    }
+//
+//    /* Now select the most preferred protocol from the proposals. */
+//    *out = APR_ARRAY_IDX(proposed_protos, 0, const unsigned char *);
+//    for (i = 1; i < proposed_protos->nelts; ++i) {
+//        const char *proto = APR_ARRAY_IDX(proposed_protos, i, const char*);
+//        /* Do we prefer it over existing candidate? */
+//        if (ssl_cmp_alpn_protos(client_protos, (const char *)*out, proto) < 0) {
+//            *out = (const unsigned char*)proto;
+//        }
+//    }
+//
+//    len = strlen((const char*)*out);
+//    if (len > 255) {
+//        // Agreed protocol name too long
+//        return SSL_TLSEXT_ERR_ALERT_FATAL;
+//    }
+//
+//    *outlen = (unsigned char)len;
+//
+//    return SSL_TLSEXT_ERR_OK;
 }
 
 
