@@ -517,7 +517,10 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
         if (err != APR_SUCCESS) {
             TCN_FREE_CSTRING(engine);
             ssl_init_cleanup();
-            tcn_ThrowAPRException(e, err);
+//            tcn_ThrowAPRException(e, err);
+            char dummy_error[50];
+            snprintf(dummy_error, 50, "APR Error number: %d", err);
+            throwIllegalStateException(e, dummy_error);
             return (jint)err;
         }
         tcn_ssl_engine = ee;
@@ -579,7 +582,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, fipsModeGet)(TCN_STDARGS)
     return FIPS_mode();
 #else
     /* FIPS is unavailable */
-    tcn_ThrowException(e, "FIPS was not available to tcnative at build time. You will need to re-build tcnative against an OpenSSL with FIPS.");
+    throwIllegalStateException(e, "FIPS was not available to tcnative at build time. You will need to re-build tcnative against an OpenSSL with FIPS.");
 
     return 0;
 #endif
@@ -600,11 +603,11 @@ TCN_IMPLEMENT_CALL(jint, SSL, fipsModeSet)(TCN_STDARGS, jint mode)
 
       ERR_error_string_n(err, msg, 256);
 
-      tcn_ThrowException(e, msg);
+      throwIllegalStateException(e, msg);
     }
 #else
     /* FIPS is unavailable */
-    tcn_ThrowException(e, "FIPS was not available to tcnative at build time. You will need to re-build tcnative against an OpenSSL with FIPS.");
+    throwIllegalStateException(e, "FIPS was not available to tcnative at build time. You will need to re-build tcnative against an OpenSSL with FIPS.");
 #endif
 
     return r;
@@ -990,7 +993,7 @@ TCN_IMPLEMENT_CALL(jlong, SSL, makeNetworkBIO)(TCN_STDARGS,
     UNREFERENCED(o);
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         goto fail;
     }
 
@@ -1050,7 +1053,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, isInInit)(TCN_STDARGS,
     UNREFERENCED(o);
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return 0;
     } else {
         return (SSL_state(ssl_) & SSL_ST_INIT) || SSL_renegotiate_pending(ssl_);
@@ -1061,7 +1064,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, doHandshake)(TCN_STDARGS,
                                            jlong ssl /* SSL * */) {
     SSL *ssl_ = J2P(ssl, SSL *);
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return 0;
     }
 
@@ -1074,7 +1077,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, renegotiate)(TCN_STDARGS,
                                            jlong ssl /* SSL * */) {
     SSL *ssl_ = J2P(ssl, SSL *);
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return 0;
     }
 
@@ -1091,7 +1094,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getNextProtoNegotiated)(TCN_STDARGS,
     unsigned int proto_len;
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return NULL;
     }
 
@@ -1113,7 +1116,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getAlpnSelected)(TCN_STDARGS,
     unsigned int proto_len;
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return NULL;
     }
 
@@ -1138,7 +1141,7 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getPeerCertChain)(TCN_STDARGS,
     SSL *ssl_ = J2P(ssl, SSL *);
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return NULL;
     }
 
@@ -1191,7 +1194,7 @@ TCN_IMPLEMENT_CALL(jbyteArray, SSL, getPeerCertificate)(TCN_STDARGS,
     SSL *ssl_ = J2P(ssl, SSL *);
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return NULL;
     }
 
@@ -1234,7 +1237,7 @@ TCN_IMPLEMENT_CALL(jlong, SSL, getTime)(TCN_STDARGS, jlong ssl)
     const SSL_SESSION *session;
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return 0;
     }
 
@@ -1252,7 +1255,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
     SSL *ssl_ = J2P(ssl, SSL *);
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return;
     }
 
@@ -1263,7 +1266,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
     UNREFERENCED(o);
 
     if (c == NULL) {
-        tcn_ThrowException(e, "context is null");
+        throwIllegalStateException(e, "context is null");
         return;
     }
     c->verify_mode = level;
@@ -1301,7 +1304,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setOptions)(TCN_STDARGS, jlong ssl,
     UNREFERENCED_STDARGS;
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return;
     }
 
@@ -1321,7 +1324,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, getOptions)(TCN_STDARGS, jlong ssl)
     UNREFERENCED_STDARGS;
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return 0;
     }
 
@@ -1342,7 +1345,7 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getCiphers)(TCN_STDARGS, jlong ssl)
     UNREFERENCED_STDARGS;
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return NULL;
     }
 
@@ -1377,7 +1380,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, setCipherSuites)(TCN_STDARGS, jlong ssl,
     UNREFERENCED_STDARGS;
 
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return JNI_FALSE;
     }
 
@@ -1417,7 +1420,7 @@ TCN_IMPLEMENT_CALL(jbyteArray, SSL, getSessionId)(TCN_STDARGS, jlong ssl)
     SSL_SESSION *session;
     SSL *ssl_ = J2P(ssl, SSL *);
     if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return NULL;
     }
     session = SSL_get_session(ssl_);
@@ -1470,7 +1473,7 @@ void setup_session_context(JNIEnv *e, tcn_ssl_ctxt_t *c) {
 TCN_IMPLEMENT_CALL(void, SSL, invalidateSession)(TCN_STDARGS, jlong ses) {
     SSL_SESSION *session = J2P(ses, SSL_SESSION *);
     if (session == NULL) {
-        throwIllegalStateException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return;
     }
     SSL_SESSION_free(session);
@@ -1481,7 +1484,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, getHandshakeCount)(TCN_STDARGS, jlong ssl)
     int *handshakeCount = NULL;
     SSL *ssl_ = J2P(ssl, SSL *);
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalArgumentException(e, "ssl is null");
         return -1;
     }
     UNREFERENCED(o);
@@ -1517,7 +1520,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
     UNREFERENCED(o);
     UNREFERENCED(engine);
-    tcn_ThrowAPRException(e, APR_ENOTIMPL);
+    throwIllegalStateException(e, APR_ENOTIMPL);
     return (jint)APR_ENOTIMPL;
 }
 
