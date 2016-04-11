@@ -167,7 +167,6 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     c->protocol = protocol;
     c->mode     = mode;
     c->ctx      = ctx;
-    c->pool     = p;
     c->bio_os   = BIO_new(BIO_s_file());
     if (c->bio_os != NULL)
         BIO_set_fp(c->bio_os, stderr, BIO_NOCLOSE | BIO_FP_TEXT);
@@ -262,7 +261,7 @@ init_failed:
     return 0;
 }
 
-UT_OPENSSL(jint, freeSSLContext)(JNIEnv *e, jobject o, jlong ctx)
+TCN_IMPLEMENT_CALL(jint, SSLContext, free)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
     UNREFERENCED_STDARGS;
@@ -703,8 +702,8 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS,jlong ctx,
         goto cleanup;
     }
     const unsigned char *tmp = (const unsigned char *)cert;
-    if ((c->certs[idx] = crypto_methods.d2i_X509(NULL, &tmp, lengthOfCert)) == NULL) {
-        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
+    if ((c->certs[idx] = d2i_X509(NULL, &tmp, lengthOfCert)) == NULL) {
+        ERR_error_string(ERR_get_error(), err);
         throwIllegalStateException(e, err);
         rv = JNI_FALSE;
         goto cleanup;
@@ -717,32 +716,32 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS,jlong ctx,
     }
     c->keys[idx] = evp;
 
-    BIO * bio = crypto_methods.BIO_new(crypto_methods.BIO_s_mem());
-    crypto_methods.BIO_write(bio, key, lengthOfKey);
+    BIO * bio = BIO_new(BIO_s_mem());
+    BIO_write(bio, key, lengthOfKey);
 
-    c->keys[idx] = crypto_methods.PEM_read_bio_PrivateKey(bio, NULL, 0, NULL);
-    crypto_methods.BIO_free(bio);
+    c->keys[idx] = PEM_read_bio_PrivateKey(bio, NULL, 0, NULL);
+    BIO_free(bio);
     if (c->keys[idx] == NULL) {
-        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
+        ERR_error_string(ERR_get_error(), err);
         throwIllegalStateException(e, err);
         rv = JNI_FALSE;
         goto cleanup;
     }
 
     if (ssl_methods.SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
-        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
+        ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Error setting certificate (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
     if (ssl_methods.SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
-        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
+        ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Error setting private key (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
     if (ssl_methods.SSL_CTX_check_private_key(c->ctx) <= 0) {
-        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
+        ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Private key does not match the certificate public key (%s)",
                   err);
         rv = JNI_FALSE;

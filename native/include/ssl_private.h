@@ -249,6 +249,7 @@ typedef struct {
     /* for client or downstream server authentication */
     int             verify_depth;
     int             verify_mode;
+    tcn_pass_cb_t   *cb_data;
 
     /* for client: List of protocols to request via ALPN.
      * for server: List of protocols to accept via ALPN.
