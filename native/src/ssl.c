@@ -307,75 +307,18 @@ void session_init(JNIEnv *e) {
 TCN_IMPLEMENT_CALL(jint, SSL, version)(TCN_STDARGS)
 {
     UNREFERENCED_STDARGS;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    return OPENSSL_VERSION_NUMBER;
-#else
     return OpenSSL_version_num();
-#endif
 }
 
 TCN_IMPLEMENT_CALL(jstring, SSL, versionString)(TCN_STDARGS)
 {
     UNREFERENCED(o);
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    return AJP_TO_JSTRING(SSLeay_version(SSLEAY_VERSION));
-#else
     return AJP_TO_JSTRING(OpenSSL_version(OPENSSL_VERSION));
-#endif
 }
 
 /*
  *  the various processing hooks
  */
-//TODO import apr_status_t ?
-static apr_status_t ssl_init_cleanup(void *data)
-{
-    UNREFERENCED(data);
-
-    if (!ssl_initialized)
-        return APR_SUCCESS;
-    ssl_initialized = 0;
-
-    if (tcn_password_callback.cb.obj) {
-        JNIEnv *env;
-        tcn_get_java_env(&env);
-        TCN_UNLOAD_CLASS(env,
-                         tcn_password_callback.cb.obj);
-    }
-
-    free_dh_params();
-
-    /*
-     * Try to kill the internals of the SSL library.
-     */
-    /* Corresponds to OPENSSL_load_builtin_modules():
-     * XXX: borrowed from apps.h, but why not CONF_modules_free()
-     * which also invokes CONF_modules_finish()?
-     */
-    CONF_modules_unload(1);
-    /* Corresponds to SSL_library_init: */
-    EVP_cleanup();
-#if HAVE_ENGINE_LOAD_BUILTIN_ENGINES
-    ENGINE_cleanup();
-#endif
-    CRYPTO_cleanup_all_ex_data();
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
-    ERR_remove_state(0);
-#else
-    ERR_remove_thread_state(NULL);
-#endif
-
-    /* Don't call ERR_free_strings here; ERR_load_*_strings only
-     * actually load the error strings once per process due to static
-     * variable abuse in OpenSSL. */
-
-    /*
-     * TODO: determine somewhere we can safely shove out diagnostics
-     *       (when enabled) at this late stage in the game:
-     * CRYPTO_mem_leaks_fp(stderr);
-     */
-    return APR_SUCCESS;
-}
 
 #ifndef OPENSSL_NO_ENGINE
 /* Try to load an engine in a shareable library */
@@ -398,9 +341,6 @@ static apr_status_t ssl_thread_cleanup(void *data)
 {
     UNREFERENCED(data);
     CRYPTO_set_locking_callback(NULL);
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
-    CRYPTO_set_id_callback(NULL);
-#endif
     CRYPTO_set_dynlock_create_callback(NULL);
     CRYPTO_set_dynlock_lock_callback(NULL);
     CRYPTO_set_dynlock_destroy_callback(NULL);
@@ -563,9 +503,6 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* We must register the library in full, to ensure our configuration
      * code can successfully test the SSL environment.
      */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    CRYPTO_malloc_init();
-#else
     OPENSSL_malloc_init();
 #endif
     ERR_load_crypto_strings();
@@ -626,7 +563,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /*
      * Let us cleanup the ssl library when the library is unloaded
      */
-      //TODO: Remove or Rewrite ?
+      //TODO: Rewrite so that it gets executed when SSL is freed
     /*apr_pool_cleanup_register(tcn_global_pool, NULL,
                               ssl_init_cleanup,
                               apr_pool_cleanup_null);
@@ -1076,7 +1013,7 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, getShutdown)(TCN_STDARGS,
 }
 
 /* Free the SSL * and its associated internal BIO */
-TCN_IMPLEMENT_CALL(void, SSL, freeSSL)(TCN_STDARGS,
+TCN_IMPLEMENT_CALL(jint, SSL, freeSSL)(TCN_STDARGS,
                                        jlong ssl /* SSL * */) {
     SSL *ssl_ = J2P(ssl, SSL *);
     int *handshakeCount = SSL_get_app_data3(ssl_);
@@ -1094,6 +1031,47 @@ TCN_IMPLEMENT_CALL(void, SSL, freeSSL)(TCN_STDARGS,
     free(con);
 
     SSL_free(ssl_);
+
+    //TODO: taken from ssl_init_cleanup adjustments might be needed
+    if (!ssl_initialized)
+        return (jint)APR_SUCCESS;
+    ssl_initialized = 0;
+
+    if (tcn_password_callback.cb.obj) {
+        JNIEnv *env;
+        tcn_get_java_env(&env);
+        TCN_UNLOAD_CLASS(env,
+                         tcn_password_callback.cb.obj);
+    }
+
+    free_dh_params();
+
+    /*
+     * Try to kill the internals of the SSL library.
+     */
+    /* Corresponds to OPENSSL_load_builtin_modules():
+     * XXX: borrowed from apps.h, but why not CONF_modules_free()
+     * which also invokes CONF_modules_finish()?
+     */
+    CONF_modules_unload(1);
+    /* Corresponds to SSL_library_init: */
+    EVP_cleanup();
+#if HAVE_ENGINE_LOAD_BUILTIN_ENGINES
+    ENGINE_cleanup();
+#endif
+    CRYPTO_cleanup_all_ex_data();
+    ERR_remove_thread_state(NULL);
+
+    /* Don't call ERR_free_strings here; ERR_load_*_strings only
+     * actually load the error strings once per process due to static
+     * variable abuse in OpenSSL. */
+
+    /*
+     * TODO: determine somewhere we can safely shove out diagnostics
+     *       (when enabled) at this late stage in the game:
+     * CRYPTO_mem_leaks_fp(stderr);
+     */
+    return (jint)APR_SUCCESS;
 }
 
 /* Make a BIO pair (network and internal) for the provided SSL * and return the network BIO */
@@ -1229,7 +1207,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getAlpnSelected)(TCN_STDARGS,
     unsigned int proto_len;
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return NULL;
     }
 
@@ -1368,7 +1346,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
     SSL *ssl_ = J2P(ssl, SSL *);
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return;
     }
 
@@ -1417,7 +1395,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setOptions)(TCN_STDARGS, jlong ssl,
     UNREFERENCED_STDARGS;
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return;
     }
 
@@ -1437,7 +1415,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, getOptions)(TCN_STDARGS, jlong ssl)
     UNREFERENCED_STDARGS;
 
     if (ssl_ == NULL) {
-        tcn_ThrowException(e, "ssl is null");
+        throwIllegalStateException(e, "ssl is null");
         return 0;
     }
 

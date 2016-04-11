@@ -137,21 +137,12 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
         /* requested but not supported */
 #endif
     } else {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-        if (mode == SSL_MODE_CLIENT)
-                ctx = SSL_CTX_new(SSLv23_client_method());
-        else if (mode == SSL_MODE_SERVER)
-                ctx = SSL_CTX_new(SSLv23_server_method());
-        else
-                ctx = SSL_CTX_new(SSLv23_method());
-#else
         if (mode == SSL_MODE_CLIENT)
                 ctx = SSL_CTX_new(TLS_client_method());
         else if (mode == SSL_MODE_SERVER)
                 ctx = SSL_CTX_new(TLS_server_method());
         else
                 ctx = SSL_CTX_new(TLS_method());
-#endif
     }
 
     if (!ctx) {
@@ -255,14 +246,6 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     SSL_CTX_set_tlsext_servername_callback(c->ctx, ssl_callback_ServerNameIndication);
     SSL_CTX_set_tlsext_servername_arg(c->ctx, c);
 
-    /*
-     * Let us cleanup the ssl context when the pool is destroyed
-     */
-     //TODO: Do we still have to cleanup with no pool ?
-    /*apr_pool_cleanup_register(p, (const void *)c,
-                              ssl_context_cleanup,
-                              apr_pool_cleanup_null);
-    */
     /* Cache the byte[].class for performance reasons */
     clazz = (*e)->FindClass(e, "[B");
     byteArrayClass = (jclass) (*e)->NewGlobalRef(e, clazz);
@@ -1129,6 +1112,36 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setAlpnProtos)(TCN_STDARGS, jlong ctx, jobj
 
         }
     }
+}
+
+TCN_IMPLEMENT_CALL(void, SSLContext, enableAlpn)(TCN_STDARGS, jlong ctx)
+{
+
+    if(SSL_CTX_set_alpn_protos == NULL) {
+        return;
+    }
+    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
+
+    TCN_ASSERT(ctx != 0);
+    UNREFERENCED(o);
+
+    SSL_CTX_set_alpn_select_cb(c->ctx, SSL_callback_alpn_select_proto, (void *) c);
+
+}
+
+TCN_IMPLEMENT_CALL(void, SSLContext, setServerALPNCallback)(TCN_STDARGS, jlong ssl, jobject callback) {
+    if(SSL_CTX_set_alpn_protos == NULL) {
+        return;
+    }
+    SSL *ssl_ = J2P(ssl, SSL *);
+
+    if (ssl_ == NULL) {
+        throwIllegalStateException(e, "ssl is null");
+        return;
+    }
+    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl_, 0);
+
+    con->alpn_selection_callback = (*e)->NewGlobalRef(e, callback);
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, setSessionCacheMode)(TCN_STDARGS, jlong ctx, jlong mode)

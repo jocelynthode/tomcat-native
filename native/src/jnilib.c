@@ -24,7 +24,6 @@ extern void sp_network_dump_statistics();
 extern void ssl_network_dump_statistics();
 #endif
 
-apr_pool_t *tcn_global_pool = NULL;
 static JavaVM     *tcn_global_vm = NULL;
 
 static jclass    jString_class;
@@ -144,59 +143,10 @@ void tcn_Throw(JNIEnv *env, char *fmt, ...) {
     va_end(ap);*/
 }
 
-
-//TODO: Remove because we don't need pool ?
-TCN_IMPLEMENT_CALL(jboolean, Library, initialize)(TCN_STDARGS)
-{
-
-    UNREFERENCED_STDARGS;
-    if (!tcn_global_pool) {
-        apr_initialize();
-        if (apr_pool_create(&tcn_global_pool, NULL) != APR_SUCCESS) {
-            return JNI_FALSE;
-        }
-        apr_atomic_init(tcn_global_pool);
-    }
-    return JNI_TRUE;
-}
-
-//TODO: Remove because we don't need pool ?
-TCN_IMPLEMENT_CALL(void, Library, terminate)(TCN_STDARGS)
-{
-
-    UNREFERENCED_STDARGS;
-    if (tcn_global_pool) {
-        apr_pool_t *p = tcn_global_pool;
-        tcn_global_pool = NULL;
-#ifdef TCN_DO_STATISTICS
-        fprintf(stderr, "APR Statistical data ....\n");
-#endif
-        apr_pool_destroy(p);
-#ifdef TCN_DO_STATISTICS
-        sp_poll_dump_statistics();
-        sp_network_dump_statistics();
-        ssl_network_dump_statistics();
-        fprintf(stderr, "APR Terminated\n");
-#endif
-        apr_terminate();
-    }
-}
-
-//TODO: Remove because we don't need pool ?
-TCN_IMPLEMENT_CALL(jlong, Library, globalPool)(TCN_STDARGS)
-{
-    UNREFERENCED_STDARGS;
-    return P2J(tcn_global_pool);
-}
-
-
-//TODO: Remove apr version
 TCN_IMPLEMENT_CALL(jint, Library, version)(TCN_STDARGS, jint what)
 {
-    apr_version_t apv;
 
     UNREFERENCED_STDARGS;
-    apr_version(&apv);
 
     switch (what) {
         case 0x01:
@@ -211,18 +161,6 @@ TCN_IMPLEMENT_CALL(jint, Library, version)(TCN_STDARGS, jint what)
         case 0x04:
             return TCN_IS_DEV_VERSION;
         break;
-        case 0x11:
-            return apv.major;
-        break;
-        case 0x12:
-            return apv.minor;
-        break;
-        case 0x13:
-            return apv.patch;
-        break;
-        case 0x14:
-            return apv.is_dev;
-        break;
     }
     return 0;
 }
@@ -233,133 +171,6 @@ TCN_IMPLEMENT_CALL(jstring, Library, versionString)(TCN_STDARGS)
     return AJP_TO_JSTRING(TCN_VERSION_STRING);
 }
 
-//TODO: Remove Apr version
-TCN_IMPLEMENT_CALL(jstring, Library, aprVersionString)(TCN_STDARGS)
-{
-    UNREFERENCED(o);
-    return AJP_TO_JSTRING(apr_version_string());
-}
-
-//TODO: Remove we don't need this
-TCN_IMPLEMENT_CALL(jboolean, Library, has)(TCN_STDARGS, jint what)
-{
-    jboolean rv = JNI_FALSE;
-    UNREFERENCED_STDARGS;
-    switch (what) {
-        case 0:
-#if APR_HAVE_IPV6
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 1:
-#if APR_HAS_SHARED_MEMORY
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 2:
-#if APR_HAS_THREADS
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 3:
-#if APR_HAS_SENDFILE
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 4:
-#if APR_HAS_MMAP
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 5:
-#if APR_HAS_FORK
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 6:
-#if APR_HAS_RANDOM
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 7:
-#if APR_HAS_OTHER_CHILD
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 8:
-#if APR_HAS_DSO
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 9:
-#if APR_HAS_SO_ACCEPTFILTER
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 10:
-#if APR_HAS_UNICODE_FS
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 11:
-#if APR_HAS_PROC_INVOKED
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 12:
-#if APR_HAS_USER
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 13:
-#if APR_HAS_LARGE_FILES
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 14:
-#if APR_HAS_XTHREAD_FILES
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 15:
-#if APR_HAS_OS_UUID
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 16:
-#if APR_IS_BIGENDIAN
-            rv = JNI_TRUE;
-#endif
-        break;
-
-        case 17:
-#if APR_FILES_AS_SOCKETS
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 18:
-#if APR_CHARSET_EBCDIC
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 19:
-#if APR_TCP_NODELAY_INHERITED
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 20:
-#if APR_O_NONBLOCK_INHERITED
-            rv = JNI_TRUE;
-#endif
-        break;
-        case 21:
-#if defined(APR_POLLSET_WAKEABLE)
-            rv = JNI_TRUE;
-#endif
-        break;
-    }
-    return rv;
-}
 
 //TODO: Remove or import some of this ?
 TCN_IMPLEMENT_CALL(jint, Library, size)(TCN_STDARGS, jint what)

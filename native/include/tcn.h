@@ -16,6 +16,7 @@
 
 #ifndef TCN_H
 #define TCN_H
+#endif
 
 #if defined(DEBUG) || defined(_DEBUG)
 /* On -DDEBUG use the statistics */
@@ -32,6 +33,7 @@
 #endif
 
 #include "tcn_api.h"
+#include "ssl_private.h"
 
 
 #if defined(_DEBUG) || defined(DEBUG)
