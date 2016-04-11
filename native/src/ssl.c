@@ -997,7 +997,7 @@ TCN_IMPLEMENT_CALL(jlong, SSL, makeNetworkBIO)(TCN_STDARGS,
         goto fail;
     }
 
-    if (crypto_methods.BIO_new_bio_pair(&internal_bio, 0, &network_bio, 0) != 1) {
+    if (BIO_new_bio_pair(&internal_bio, 0, &network_bio, 0) != 1) {
         throwIllegalStateException(e, "BIO_new_bio_pair failed");
         goto fail;
     }
