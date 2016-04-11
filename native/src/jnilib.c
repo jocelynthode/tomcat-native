@@ -194,12 +194,8 @@ TCN_IMPLEMENT_CALL(jint, Library, size)(TCN_STDARGS, jint what)
         case 5:
             return APR_MAX_SECS_TO_LINGER;
         break;
-        case 6:
-            return APR_MMAP_THRESHOLD;
-        break;
-        case 7:
-            return APR_MMAP_LIMIT;
-        break;
+
+// TODO: Throw exception if no match ? We removed cases that may still be used.
 
     }
     return 0;
