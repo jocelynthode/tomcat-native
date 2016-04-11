@@ -400,8 +400,6 @@ static apr_status_t ssl_thread_cleanup(void *data)
     CRYPTO_set_dynlock_lock_callback(NULL);
     CRYPTO_set_dynlock_destroy_callback(NULL);
 
-    dynlockpool = NULL;
-
     /* Let the registered mutex cleanups do their own thing
      */
     return APR_SUCCESS;
@@ -419,86 +417,6 @@ static int ssl_rand_choosenum(int l, int h)
     if (i < l) i = l;
     if (i > h) i = h;
     return i;
-}
-
- //TODO: Take APR_PATH
-static int ssl_rand_load_file(const char *file)
-{
-    char buffer[APR_PATH_MAX];
-    int n;
-
-    if (file == NULL)
-        file = ssl_global_rand_file;
-    if (file && (strcmp(file, "builtin") == 0))
-        return -1;
-    if (file == NULL)
-        file = RAND_file_name(buffer, sizeof(buffer));
-    if (file) {
-        if (strncmp(file, "egd:", 4) == 0) {
-            if ((n = RAND_egd(file + 4)) > 0)
-                return n;
-            else
-                return -1;
-        }
-        if ((n = RAND_load_file(file, -1)) > 0)
-            return n;
-    }
-    return -1;
-}
-
-/*
- * writes a number of random bytes (currently 1024) to
- * file which can be used to initialize the PRNG by calling
- * RAND_load_file() in a later session
- */
-//TODO: Take APR_PATH
-static int ssl_rand_save_file(const char *file)
-{
-    char buffer[APR_PATH_MAX];
-    int n;
-
-    if (file == NULL)
-        file = RAND_file_name(buffer, sizeof(buffer));
-    else if ((n = RAND_egd(file)) > 0) {
-        return 0;
-    }
-    if (file == NULL || !RAND_write_file(file))
-        return 0;
-    else
-        return 1;
-}
-
- //TODO: Take types
-int SSL_rand_seed(const char *file)
-{
-    unsigned char stackdata[256];
-    static volatile apr_uint32_t counter = 0;
-
-    if (ssl_rand_load_file(file) < 0) {
-        int n;
-        struct {
-            apr_time_t    t;
-            pid_t         p;
-            unsigned long i;
-            apr_uint32_t  u;
-        } _ssl_seed;
-        if (counter == 0) {
-            apr_generate_random_bytes(stackdata, 256);
-            RAND_seed(stackdata, 128);
-        }
-        _ssl_seed.t = apr_time_now();
-        _ssl_seed.p = getpid();
-        _ssl_seed.i = ssl_thread_id();
-        apr_atomic_inc32(&counter);
-        _ssl_seed.u = counter;
-        RAND_seed((unsigned char *)&_ssl_seed, sizeof(_ssl_seed));
-        /*
-         * seed in some current state of the run-time stack (128 bytes)
-         */
-        n = ssl_rand_choosenum(0, sizeof(stackdata)-128-1);
-        RAND_seed(stackdata + n, 128);
-    }
-    return RAND_status();
 }
 
 static int ssl_rand_make(const char *file, int len, int base64)
@@ -642,26 +560,6 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     return (jint)APR_SUCCESS;
 }
 
-TCN_IMPLEMENT_CALL(jboolean, SSL, randLoad)(TCN_STDARGS, jstring file)
-{
-    TCN_ALLOC_CSTRING(file);
-    int r;
-    UNREFERENCED(o);
-    r = SSL_rand_seed(J2S(file));
-    TCN_FREE_CSTRING(file);
-    return r ? JNI_TRUE : JNI_FALSE;
-}
-
-TCN_IMPLEMENT_CALL(jboolean, SSL, randSave)(TCN_STDARGS, jstring file)
-{
-    TCN_ALLOC_CSTRING(file);
-    int r;
-    UNREFERENCED(o);
-    r = ssl_rand_save_file(J2S(file));
-    TCN_FREE_CSTRING(file);
-    return r ? JNI_TRUE : JNI_FALSE;
-}
-
 TCN_IMPLEMENT_CALL(jboolean, SSL, randMake)(TCN_STDARGS, jstring file,
                                             jint length, jboolean base64)
 {
@@ -673,16 +571,6 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, randMake)(TCN_STDARGS, jstring file,
     return r ? JNI_TRUE : JNI_FALSE;
 }
 
-//TODO: Rewrite pstrdup ?
-TCN_IMPLEMENT_CALL(void, SSL, randSet)(TCN_STDARGS, jstring file)
-{
-    TCN_ALLOC_CSTRING(file);
-    UNREFERENCED(o);
-    if (J2S(file)) {
-        ssl_global_rand_file = apr_pstrdup(tcn_global_pool, J2S(file));
-    }
-    TCN_FREE_CSTRING(file);
-}
 
 TCN_IMPLEMENT_CALL(jint, SSL, fipsModeGet)(TCN_STDARGS)
 {
