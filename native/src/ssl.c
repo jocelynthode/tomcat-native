@@ -531,11 +531,6 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 
     //TODO: Keep it ?
     memset(&tcn_password_callback, 0, sizeof(tcn_pass_cb_t));
-    /* Initialize PRNG
-     * This will in most cases call the builtin
-     * low entropy seed.
-     */
-    SSL_rand_seed(NULL);
 
     init_dh_params();
     //TODO END
@@ -887,8 +882,6 @@ TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
 
     /* Setup verify and seed */
     SSL_set_verify_result(ssl, X509_V_OK);
-    //TODO: do we need our seed? It seems the default seed should be more secure
-    //SSL_rand_seed(c->rand_file);
 
     /* Store for later usage in SSL_callback_SSL_verify */
     SSL_set_app_data2(ssl, c);
@@ -980,7 +973,7 @@ TCN_IMPLEMENT_CALL(void, SSL, freeSSL)(TCN_STDARGS,
 
     SSL_free(ssl_);
 
-    ssl_init_cleanup();
+//    ssl_init_cleanup();
 }
 
 /* Make a BIO pair (network and internal) for the provided SSL * and return the network BIO */
