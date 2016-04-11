@@ -153,6 +153,9 @@ void ssl_thread_setup()
 #endif
     }
 
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
+    CRYPTO_set_id_callback(ssl_thread_id);
+#endif
     CRYPTO_set_locking_callback(ssl_thread_lock);
 
     /* Set up dynamic locking scaffolding for OpenSSL to use at its

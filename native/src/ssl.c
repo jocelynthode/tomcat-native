@@ -307,13 +307,21 @@ void session_init(JNIEnv *e) {
 TCN_IMPLEMENT_CALL(jint, SSL, version)(TCN_STDARGS)
 {
     UNREFERENCED_STDARGS;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    return OPENSSL_VERSION_NUMBER;
+#else
     return OpenSSL_version_num();
+#endif
 }
 
 TCN_IMPLEMENT_CALL(jstring, SSL, versionString)(TCN_STDARGS)
 {
     UNREFERENCED(o);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    return AJP_TO_JSTRING(SSLeay_version(SSLEAY_VERSION));
+#else
     return AJP_TO_JSTRING(OpenSSL_version(OPENSSL_VERSION));
+#endif
 }
 
 /*
@@ -385,6 +393,9 @@ static apr_status_t ssl_thread_cleanup(void *data)
 {
     UNREFERENCED(data);
     CRYPTO_set_locking_callback(NULL);
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
+    CRYPTO_set_id_callback(NULL);
+#endif
     CRYPTO_set_dynlock_create_callback(NULL);
     CRYPTO_set_dynlock_lock_callback(NULL);
     CRYPTO_set_dynlock_destroy_callback(NULL);
@@ -547,6 +558,9 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* We must register the library in full, to ensure our configuration
      * code can successfully test the SSL environment.
      */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    CRYPTO_malloc_init();
+#else
     OPENSSL_malloc_init();
 #endif
     ERR_load_crypto_strings();
