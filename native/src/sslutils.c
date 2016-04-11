@@ -489,7 +489,9 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
             ok = 0;
         }
         else {
-            int ocsp_response = ssl_verify_OCSP(ok, ctx);
+//            int ocsp_response = ssl_verify_OCSP(ok, ctx);
+            int ocsp_response = OCSP_STATUS_UNKNOWN; //TODO: Reimplement ssl_verify_OCSP()
+
             if (ocsp_response == OCSP_STATUS_OK) {
                 skip_crl = 1; /* we know it is valid we skip crl evaluation */
             }
