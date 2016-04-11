@@ -15,6 +15,7 @@
  *  limitations under the License.
  */
 #include <pthread.h>
+#include "tcn.h"
 
 /* This file contains all thread related functions */
 
