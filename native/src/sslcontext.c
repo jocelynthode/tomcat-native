@@ -45,12 +45,11 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
     jlong original_ssl_context, new_ssl_context;
     tcn_ssl_ctxt_t *new_c;
 
-    //TODO maybe uncomment
     // Continue only if the static method exists
-    //if (sni_java_callback == NULL) {
-    //    return SSL_TLSEXT_ERR_OK;
-    //}
-    
+    if (sni_java_callback == NULL) {
+        return SSL_TLSEXT_ERR_OK;
+    }
+
     (*javavm)->AttachCurrentThread(javavm, (void **)&env, NULL);
 
     // Get the host name presented by the client
@@ -58,8 +57,8 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 
     // Convert to Java compatible parameters ready for the method call
     hostname = (*env)->NewStringUTF(env, servername);
-    original_ssl_context = P2J(c->ctx); //TODO switched from c to c->ctx
-    
+    original_ssl_context = P2J(c);
+
     new_ssl_context = (*env)->CallStaticLongMethod(env,
                                                    ssl_context_class,
                                                    sni_java_callback,
@@ -68,12 +67,11 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 
     // Delete the local reference as this method is called via callback.
     // Otherwise local references are only freed once jni method returns.
-    //(*env)->DeleteLocalRef(env, hostname);
-    //TODO maybe uncomment
+    (*env)->DeleteLocalRef(env, hostname);
 
     if (new_ssl_context != 0 && new_ssl_context != original_ssl_context) {
-        new_c = J2P(new_ssl_context, SSL_CTX *);
-        SSL_set_SSL_CTX(ssl, new_c);
+        new_c = J2P(new_ssl_context, tcn_ssl_ctxt_t *);
+        SSL_set_SSL_CTX(ssl, new_c->ctx);
     }
 
     return SSL_TLSEXT_ERR_OK;
