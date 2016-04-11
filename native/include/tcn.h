@@ -16,7 +16,7 @@
 
 #ifndef TCN_H
 #define TCN_H
-#endif
+
 
 #if defined(DEBUG) || defined(_DEBUG)
 /* On -DDEBUG use the statistics */
@@ -33,7 +33,6 @@
 #endif
 
 #include "tcn_api.h"
-#include "ssl_private.h"
 
 
 #if defined(_DEBUG) || defined(DEBUG)
@@ -115,6 +114,18 @@ JavaVM * tcn_get_java_vm();
 jstring tcn_new_string(JNIEnv *env, const char *str);
 jstring tcn_new_stringn(JNIEnv *env, const char *str, size_t l);
 
+/* TODO: Is it the right place for that ? */
+#define TCN_MAX_METHODS 8
+
+typedef struct {
+    jobject     obj;
+    jmethodID   mid[TCN_MAX_METHODS];
+    void        *opaque;
+} tcn_callback_t;
+
+#include "ssl_private.h"
+
+/* ENDTODO */
 
 void setup_session_context(JNIEnv *e, tcn_ssl_ctxt_t *c);
 /*thread setup function*/
@@ -172,14 +183,6 @@ void session_init(JNIEnv *e);
         }                                           \
     TCN_END_MACRO
 
-#define TCN_MAX_METHODS 8
-
-typedef struct {
-    jobject     obj;
-    jmethodID   mid[TCN_MAX_METHODS];
-    void        *opaque;
-} tcn_callback_t;
-
 #ifdef WIN32
 #define TCN_ALLOC_WSTRING(V)     \
     jsize wl##V = (*e)->GetStringLength(e, V);   \
@@ -198,3 +201,5 @@ typedef struct {
 #define J2W(V)  w##V
 
 #endif
+
+#endif /* TCN_H */

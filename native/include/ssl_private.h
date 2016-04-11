@@ -63,8 +63,6 @@
 #define SSL_AIDX_ECC     (3)
 #define SSL_AIDX_MAX     (4)
 
-#include "tcn.h"
-
 /*
  * Define the SSL options
  */
