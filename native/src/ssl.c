@@ -765,7 +765,6 @@ static int jbs_new(BIO *bi)
 
     if ((j = OPENSSL_malloc(sizeof(BIO_JAVA))) == NULL)
         return 0;
-    j->pool      = NULL;
     j->refcount  = 1;
     bi->shutdown = 1;
     bi->init     = 0;
@@ -1112,7 +1111,7 @@ TCN_IMPLEMENT_CALL(jlong, SSL, makeNetworkBIO)(TCN_STDARGS,
         goto fail;
     }
 
-    ssl_methods.SSL_set_bio(ssl_, internal_bio, internal_bio);
+    SSL_set_bio(ssl_, internal_bio, internal_bio);
 
     return P2J(network_bio);
  fail:
@@ -1512,7 +1511,7 @@ jbyteArray getSessionId(JNIEnv *e, SSL_SESSION *session) {
 
     unsigned int len;
     const unsigned char *session_id;
-    session_id = ssl_methods.SSL_SESSION_get_id(session, &len);
+    session_id = SSL_SESSION_get_id(session, &len);
 
     if (len == 0 || session_id == NULL) {
         return NULL;
@@ -1533,7 +1532,7 @@ TCN_IMPLEMENT_CALL(jbyteArray, SSL, getSessionId)(TCN_STDARGS, jlong ssl)
         throwIllegalStateException(e, "ssl is null");
         return NULL;
     }
-    session = ssl_methods.SSL_get_session(ssl_);
+    session = SSL_get_session(ssl_);
     return getSessionId(e, session);
 }
 
@@ -1556,7 +1555,7 @@ int new_session_cb(SSL * ssl, SSL_SESSION * session) {
     return 1;
 }
 void remove_session_cb(SSL_CTX *ctx, SSL_SESSION * session) {
-     tcn_ssl_ctxt_t  *c = ssl_methods.SSL_CTX_get_ex_data(ctx,0);
+     tcn_ssl_ctxt_t  *c = SSL_CTX_get_ex_data(ctx,0);
     JavaVM *javavm = tcn_get_java_vm();
     JNIEnv *e;
     (*javavm)->AttachCurrentThread(javavm, (void **)&e, NULL);
@@ -1569,14 +1568,14 @@ void remove_session_cb(SSL_CTX *ctx, SSL_SESSION * session) {
 
 void setup_session_context(JNIEnv *e, tcn_ssl_ctxt_t *c) {
  /* Default session context id and cache size */
-    ssl_methods.SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_SIZE,SSL_DEFAULT_CACHE_SIZE,NULL);
+    SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_SIZE,SSL_DEFAULT_CACHE_SIZE,NULL);
     /* Session cache is disabled by default */
-	ssl_methods.SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_MODE,SSL_SESS_CACHE_OFF,NULL);
+	SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_MODE,SSL_SESS_CACHE_OFF,NULL);
     /* Longer session timeout */
-    ssl_methods.SSL_CTX_set_timeout(c->ctx, 14400);
+    SSL_CTX_set_timeout(c->ctx, 14400);
 
-    ssl_methods.SSL_CTX_sess_set_new_cb(c->ctx, &new_session_cb);
-    ssl_methods.SSL_CTX_sess_set_remove_cb(c->ctx, &remove_session_cb);
+    SSL_CTX_sess_set_new_cb(c->ctx, &new_session_cb);
+    SSL_CTX_sess_set_remove_cb(c->ctx, &remove_session_cb);
 }
 
 
@@ -1586,7 +1585,7 @@ TCN_IMPLEMENT_CALL(void, SSL, invalidateSession)(TCN_STDARGS, jlong ses) {
         throwIllegalStateException(e, "ssl is null");
         return;
     }
-    ssl_methods.SSL_SESSION_free(session);
+    SSL_SESSION_free(session);
 }
 
 TCN_IMPLEMENT_CALL(jint, SSL, getHandshakeCount)(TCN_STDARGS, jlong ssl)
