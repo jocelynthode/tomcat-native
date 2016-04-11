@@ -728,19 +728,19 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS,jlong ctx,
         goto cleanup;
     }
 
-    if (ssl_methods.SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
+    if (SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Error setting certificate (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (ssl_methods.SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
+    if (SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Error setting private key (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (ssl_methods.SSL_CTX_check_private_key(c->ctx) <= 0) {
+    if (SSL_CTX_check_private_key(c->ctx) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Private key does not match the certificate public key (%s)",
                   err);
