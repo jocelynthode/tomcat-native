@@ -19,8 +19,16 @@
 # Top-level Makefile for TCNATIVE
 #
 
+C = @CC@
+LIBTOOL = @LIBTOOL@
+
 CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@
+LIBS=@LIBS@
+DEFS=@DEFS@
+ALL_INCLUDES=-I./include
+
+COMPILE      = $(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(ALL_INCLUDES)
 
 # gets substituted into some targets
 TCNATIVE_MAJOR_VERSION=@TCNATIVE_MAJOR_VERSION@
@@ -31,7 +39,7 @@ srcdir = @srcdir@
 VPATH = @srcdir@
 
 # this sucks, but it's the only way to add extra flags to the LT_COMPILE
-INCLUDES = @CFLAGS@ @CPPFLAGS@ @TCNATIVE_INCLUDES@ @TCNATIVE_PRIV_INCLUDES@ @APR_INCLUDES@
+INCLUDES = @CFLAGS@ @CPPFLAGS@ @TCNATIVE_INCLUDES@ @TCNATIVE_PRIV_INCLUDES@
 TCNATIVE_LDFLAGS = @TCNATIVE_LDFLAGS@
 TCNATIVE_LIBS = @TCNATIVE_LIBS@
 
@@ -65,9 +73,23 @@ includedir=@includedir@
 top_srcdir=@abs_srcdir@
 top_blddir=@abs_builddir@
 
+OBJECTS=src/bb.o  src/jnilib.o  src/ssl.o  src/sslcontext.o  src/sslutils.o  src/threads.o
+
+#
+## Implicit rules for creating outputs from input files
+#
+#.SUFFIXES:
+.SUFFIXES: .c .lo .o
+
+.c.o:
+	$(COMPILE) -c $<
+
+.c.lo:
+	$(LT_COMPILE)
+
 
 install: $(TARGET_LIB)
-	$(APR_MKDIR) $(DESTDIR)$(includedir) $(DESTDIR)$(libdir)/pkgconfig \
+	mkdir -p $(DESTDIR)$(includedir) $(DESTDIR)$(libdir)/pkgconfig \
 		     $(DESTDIR)$(libdir) $(DESTDIR)$(bindir)
 	$(INSTALL_DATA) tcnative.pc $(DESTDIR)$(libdir)/pkgconfig/$(TCNATIVE_PCFILE)
 	list='$(INSTALL_SUBDIRS)'; for i in $$list; do \
