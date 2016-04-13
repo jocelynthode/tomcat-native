@@ -17,72 +17,15 @@
 #
 #
 
-# Default place to look for apr source.  Can be overridden with 
-#   --with-apr=[directory]
-apr_src_dir=`pwd`/srclib/apr-1.5.2
-
-while [ $# -gt 0 ]
-do
-  # Normalize
-  case "$1" in
-  -*=*) optarg=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
-  *) optarg= ;;
-  esac
-
-  case "$1" in
-  --with-apr=*)
-    apr_src_dir=$optarg
-    ;;
-  esac
-
-  shift
-done
-
-if [ -d "$apr_src_dir" ]; then
-  echo ""
-  echo "Looking for apr source in $apr_src_dir"
-else
-  echo ""
-  echo "Problem finding apr source in $apr_src_dir."
-  echo "Use:"
-  echo "  --with-apr=[directory]" 
-  exit 1
-fi
-
-if [ ! -d "$apr_src_dir/build" ]; then
-  echo "Directory '$apr_src_dir/build' missing - wrong apr source directory?"
-  exit 1
-fi
-
-# Remove some files, then copy them from apr source tree
-for file in apr_common.m4 find_apr.m4 install.sh config.guess config.sub
-do
-  if [ ! -f "$apr_src_dir/build/$file" ]; then
-    echo "File '$apr_src_dir/build/$file' missing - wrong apr source directory?"
-    exit 1
-  fi
-  rm -f build/$file
-  cp $apr_src_dir/build/$file build/
-done
-
 # Remove aclocal.m4 as it'll break some builds...
 rm -rf aclocal.m4 autom4te*.cache
 
 echo "Creating configure ..."
+libtoolize --force
 ### do some work to toss config.cache?
 ${AUTOCONF:-autoconf}
 if [ $? -gt 0 ]; then
   echo "autoconf failed"
-  exit 1
-fi
-
-#
-# Generate build-outputs.mk for the build systme
-#
-echo "Generating 'make' outputs ..."
-$apr_src_dir/build/gen-build.py make
-if [ $? -gt 0 ]; then
-  echo "Creating build-outputs.mk failed"
   exit 1
 fi
 

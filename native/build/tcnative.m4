@@ -15,53 +15,6 @@
 # limitations under the License.
 #
 
-dnl
-dnl TCN_FIND_APR: figure out where APR is located
-dnl
-AC_DEFUN(TCN_FIND_APR,[
-
-  dnl use the find_apr.m4 script to locate APR. sets apr_found and apr_config
-  APR_FIND_APR(,,1,[1])
-  if test "$apr_found" = "no"
-  then
-    AC_MSG_ERROR(APR could not be located. Please use the --with-apr option.)
-  fi
-
-  sapr_pversion="`$apr_config --version`"
-  if test -z "$sapr_pversion"
-  then
-    AC_MSG_ERROR(APR config could not be located. Please use the --with-apr option.)
-  fi
-  sapr_version="`echo $sapr_pversion|sed -e 's/\([a-z]*\)$/.\1/'`"
-  tc_save_IFS=$IFS
-  IFS=.
-  set $sapr_version
-  IFS=$tc_save_IFS
-  decimal_apr_version=`printf %02d%02d%03d ${1} ${2} ${3}`
-  if test "${decimal_apr_version}" -lt "0104003"
-  then
-    AC_MSG_ERROR(Found APR $sapr_version. You need version 1.4.3 or newer installed.)
-  fi
-  AC_MSG_NOTICE(APR $sapr_version detected.)
-
-  APR_BUILD_DIR="`$apr_config --installbuilddir`"
-
-  dnl make APR_BUILD_DIR an absolute directory (we'll need it in the
-  dnl sub-projects in some cases)
-  APR_BUILD_DIR="`cd $APR_BUILD_DIR && pwd`"
-
-  APR_INCLUDES="`$apr_config --includes`"
-  APR_LIBTOOL_LIBS="`$apr_config --link-libtool --libs`"
-  APR_LIBS="`$apr_config --link-ld --libs`"
-  APR_SO_EXT="`$apr_config --apr-so-ext`"
-  APR_LIB_TARGET="`$apr_config --apr-lib-target`"
-
-  AC_SUBST(APR_INCLUDES)
-  AC_SUBST(APR_LIBTOOL_LIBS)
-  AC_SUBST(APR_LIBS)
-  AC_SUBST(APR_BUILD_DIR)
-])
-
 dnl --------------------------------------------------------------------------
 dnl TCN_JDK
 dnl
@@ -282,20 +235,24 @@ then
 fi
 ])
 
-dnl
-dnl TCN_FIND_APR_FEATURE: figure out if APR feature is suipported
-dnl
-AC_DEFUN(TCN_FIND_APR_FEATURE,[
-  saved_cflags="$CFLAGS"
-  saved_libs="$LIBS"
-  CFLAGS="$CFLAGS $APR_INCLUDES"
-  LIBS="$LIBS $APR_LIBS"
-  chk_result=0
-  AC_CHECK_LIB(apr-1, $1,[chk_result=1])
-  CFLAGS="$saved_cflags"
-  LIBS="$saved_libs"
-  if test "$chk_result" != "0"
-  then
-    APR_ADDTO(CFLAGS, [-DHAVE_$2])
+AC_DEFUN([APR_ADDTO], [
+  if test "x$$1" = "x"; then
+    test "x$silent" != "xyes" && echo "  setting $1 to \"$2\""
+    $1="$2"
+  else
+    apr_addto_bugger="$2"
+    for i in $apr_addto_bugger; do
+      apr_addto_duplicate="0"
+      for j in $$1; do
+        if test "x$i" = "x$j"; then
+          apr_addto_duplicate="1"
+          break
+        fi
+      done
+      if test $apr_addto_duplicate = "0"; then
+        test "x$silent" != "xyes" && echo "  adding \"$i\" to $1"
+        $1="$$1 $i"
+      fi
+    done
   fi
 ])
