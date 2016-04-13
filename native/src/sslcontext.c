@@ -50,7 +50,7 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
     (*javavm)->AttachCurrentThread(javavm, (void **)&env, NULL);
 
     // Get the host name presented by the client
-    servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    servername = ssl_methods.SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 
     // Convert to Java compatible parameters ready for the method call
     hostname = (*env)->NewStringUTF(env, servername);
@@ -68,7 +68,7 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 
     if (new_ssl_context != 0 && new_ssl_context != original_ssl_context) {
         new_c = J2P(new_ssl_context, tcn_ssl_ctxt_t *);
-        SSL_set_SSL_CTX(ssl, new_c->ctx);
+        ssl_methods.SSL_set_SSL_CTX(ssl, new_c->ctx);
     }
 
     return SSL_TLSEXT_ERR_OK;
@@ -91,35 +91,35 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     if (protocol == SSL_PROTOCOL_TLSV1_2) {
 #ifdef HAVE_TLSV1_2
         if (mode == SSL_MODE_CLIENT)
-            ctx = SSL_CTX_new(TLSv1_2_client_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_2_client_method());
         else if (mode == SSL_MODE_SERVER)
-            ctx = SSL_CTX_new(TLSv1_2_server_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_2_server_method());
         else
-            ctx = SSL_CTX_new(TLSv1_2_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_2_method());
 #endif
     } else if (protocol == SSL_PROTOCOL_TLSV1_1) {
 #ifdef HAVE_TLSV1_1
         if (mode == SSL_MODE_CLIENT)
-            ctx = SSL_CTX_new(TLSv1_1_client_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_1_client_method());
         else if (mode == SSL_MODE_SERVER)
-            ctx = SSL_CTX_new(TLSv1_1_server_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_1_server_method());
         else
-            ctx = SSL_CTX_new(TLSv1_1_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_1_method());
 #endif
     } else if (protocol == SSL_PROTOCOL_TLSV1) {
         if (mode == SSL_MODE_CLIENT)
-            ctx = SSL_CTX_new(TLSv1_client_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_client_method());
         else if (mode == SSL_MODE_SERVER)
-            ctx = SSL_CTX_new(TLSv1_server_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_server_method());
         else
-            ctx = SSL_CTX_new(TLSv1_method());
+            ctx = ssl_methods.SSL_CTX_new(TLSv1_method());
     } else if (protocol == SSL_PROTOCOL_SSLV3) {
         if (mode == SSL_MODE_CLIENT)
-            ctx = SSL_CTX_new(SSLv3_client_method());
+            ctx = ssl_methods.SSL_CTX_new(SSLv3_client_method());
         else if (mode == SSL_MODE_SERVER)
-            ctx = SSL_CTX_new(SSLv3_server_method());
+            ctx = ssl_methods.SSL_CTX_new(SSLv3_server_method());
         else
-            ctx = SSL_CTX_new(SSLv3_method());
+            ctx = ssl_methods.SSL_CTX_new(SSLv3_method());
     } else if (protocol == SSL_PROTOCOL_SSLV2) {
         /* requested but not supported */
 #ifndef HAVE_TLSV1_2
@@ -133,18 +133,18 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     } else {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
         if (mode == SSL_MODE_CLIENT)
-                ctx = SSL_CTX_new(SSLv23_client_method());
+                ctx = ssl_methods.SSL_CTX_new(SSLv23_client_method());
         else if (mode == SSL_MODE_SERVER)
-                ctx = SSL_CTX_new(SSLv23_server_method());
+                ctx = ssl_methods.SSL_CTX_new(SSLv23_server_method());
         else
-                ctx = SSL_CTX_new(SSLv23_method());
+                ctx = ssl_methods.SSL_CTX_new(SSLv23_method());
 #else
         if (mode == SSL_MODE_CLIENT)
-                ctx = SSL_CTX_new(TLS_client_method());
+                ctx = ssl_methods.SSL_CTX_new(TLS_client_method());
         else if (mode == SSL_MODE_SERVER)
-                ctx = SSL_CTX_new(TLS_server_method());
+                ctx = ssl_methods.SSL_CTX_new(TLS_server_method());
         else
-                ctx = SSL_CTX_new(TLS_method());
+                ctx = ssl_methods.SSL_CTX_new(TLS_method());
 #endif
     }
 
@@ -166,55 +166,55 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     c->bio_os   = BIO_new(BIO_s_file());
     if (c->bio_os != NULL)
         BIO_set_fp(c->bio_os, stderr, BIO_NOCLOSE | BIO_FP_TEXT);
-    SSL_CTX_set_options(c->ctx, SSL_OP_ALL);
+    ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_ALL);
     /* always disable SSLv2, as per RFC 6176 */
-    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
+    ssl_methods.SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
     if (!(protocol & SSL_PROTOCOL_SSLV3))
-        SSL_CTX_set_options(c->ctx, SSL_OP_NO_SSLv3);
+        ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_NO_SSLv3);
     if (!(protocol & SSL_PROTOCOL_TLSV1))
-        SSL_CTX_set_options(c->ctx, SSL_OP_NO_TLSv1);
+        ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_NO_TLSv1);
 #ifdef HAVE_TLSV1_1
     if (!(protocol & SSL_PROTOCOL_TLSV1_1))
-        SSL_CTX_set_options(c->ctx, SSL_OP_NO_TLSv1_1);
+        ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_NO_TLSv1_1);
 #endif
 #ifdef HAVE_TLSV1_2
     if (!(protocol & SSL_PROTOCOL_TLSV1_2))
-        SSL_CTX_set_options(c->ctx, SSL_OP_NO_TLSv1_2);
+        ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_NO_TLSv1_2);
 #endif
     /*
      * Configure additional context ingredients
      */
-    SSL_CTX_set_options(c->ctx, SSL_OP_SINGLE_DH_USE);
+    ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_SINGLE_DH_USE);
 /* TODO: what do we do with these defines? */
 #ifdef HAVE_ECC
-    SSL_CTX_set_options(c->ctx, SSL_OP_SINGLE_ECDH_USE);
+    ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_SINGLE_ECDH_USE);
 #endif
 #ifdef SSL_OP_NO_COMPRESSION
     /* Disable SSL compression to be safe */
-    SSL_CTX_set_options(c->ctx, SSL_OP_NO_COMPRESSION);
+    ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_NO_COMPRESSION);
 #endif
 
 
     /** To get back the tomcat wrapper from CTX */
-    SSL_CTX_set_app_data(c->ctx, (char *)c);
+    ssl_methods.SSL_CTX_set_app_data(c->ctx, (char *)c);
 
 #ifdef SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
     /*
      * Disallow a session from being resumed during a renegotiation,
      * so that an acceptable cipher suite can be negotiated.
      */
-    SSL_CTX_set_options(c->ctx, SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+    ssl_methods.SSL_CTX_set_options(c->ctx, SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 #endif
 #ifdef SSL_MODE_RELEASE_BUFFERS
     /* Release idle buffers to the SSL_CTX free list */
-    SSL_CTX_set_mode(c->ctx, SSL_MODE_RELEASE_BUFFERS);
+    ssl_methods.SSL_CTX_set_mode(c->ctx, SSL_MODE_RELEASE_BUFFERS);
 #endif
     /* Default session context id and cache size */
-    SSL_CTX_sess_set_cache_size(c->ctx, SSL_DEFAULT_CACHE_SIZE);
+    ssl_methods.SSL_CTX_sess_set_cache_size(c->ctx, SSL_DEFAULT_CACHE_SIZE);
     /* Session cache is disabled by default */
-    SSL_CTX_set_session_cache_mode(c->ctx, SSL_SESS_CACHE_OFF);
+    ssl_methods.SSL_CTX_set_session_cache_mode(c->ctx, SSL_SESS_CACHE_OFF);
     /* Longer session timeout */
-    SSL_CTX_set_timeout(c->ctx, 14400);
+    ssl_methods.SSL_CTX_set_timeout(c->ctx, 14400);
 
     EVP_Digest((const unsigned char *)SSL_DEFAULT_VHOST_NAME,
                (unsigned long)((sizeof SSL_DEFAULT_VHOST_NAME) - 1),
@@ -229,8 +229,8 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
 
     /* Set default password callback */
     /* TODO: fixme, do we need to support these callbacks?
-    SSL_CTX_set_default_passwd_cb(c->ctx, (pem_password_cb *)SSL_password_callback);
-    SSL_CTX_set_default_passwd_cb_userdata(c->ctx, (void *)(&tcn_password_callback));
+    ssl_methods.SSL_CTX_set_default_passwd_cb(c->ctx, (pem_password_cb *)SSL_password_callback);
+    ssl_methods.SSL_CTX_set_default_passwd_cb_userdata(c->ctx, (void *)(&tcn_password_callback));
     ssl_methods.SSL_CTX_set_info_callback(c->ctx, SSL_callback_handshake);
     */
 
@@ -246,8 +246,8 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     }
 
     /* Set up OpenSSL call back if SNI is provided by the client */
-    SSL_CTX_set_tlsext_servername_callback(c->ctx, ssl_callback_ServerNameIndication);
-    SSL_CTX_set_tlsext_servername_arg(c->ctx, c);
+    ssl_methods.SSL_CTX_set_tlsext_servername_callback(c->ctx, ssl_callback_ServerNameIndication);
+    ssl_methods.SSL_CTX_set_tlsext_servername_arg(c->ctx, c);
 
     /* Cache the byte[].class for performance reasons */
     clazz = (*e)->FindClass(e, "[B");
@@ -270,7 +270,7 @@ TCN_IMPLEMENT_CALL(jint, SSLContext, free)(TCN_STDARGS, jlong ctx)
         }
         c->crl = NULL;
         if (c->ctx) {
-            SSL_CTX_free(c->ctx);
+            ssl_methods.SSL_CTX_free(c->ctx);
         }
         c->ctx = NULL;
         for (i = 0; i < SSL_AIDX_MAX; i++) {
@@ -328,7 +328,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setOptions)(TCN_STDARGS, jlong ctx,
     if (opt & 0x00040000)
         opt &= ~0x00040000;
 #endif
-    SSL_CTX_set_options(c->ctx, opt);
+    ssl_methods.SSL_CTX_set_options(c->ctx, opt);
 }
 
 TCN_IMPLEMENT_CALL(jint, SSLContext, getOptions)(TCN_STDARGS, jlong ctx)
@@ -338,7 +338,7 @@ TCN_IMPLEMENT_CALL(jint, SSLContext, getOptions)(TCN_STDARGS, jlong ctx)
     UNREFERENCED_STDARGS;
     TCN_ASSERT(ctx != 0);
 
-    return SSL_CTX_get_options(c->ctx);
+    return ssl_methods.SSL_CTX_get_options(c->ctx);
 }
 
 TCN_IMPLEMENT_CALL(void, SSLContext, clearOptions)(TCN_STDARGS, jlong ctx,
@@ -348,7 +348,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, clearOptions)(TCN_STDARGS, jlong ctx,
 
     UNREFERENCED_STDARGS;
     TCN_ASSERT(ctx != 0);
-    SSL_CTX_clear_options(c->ctx, opt);
+    ssl_methods.SSL_CTX_clear_options(c->ctx, opt);
 }
 
 TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCipherSuite)(TCN_STDARGS, jlong ctx,
@@ -379,9 +379,9 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCipherSuite)(TCN_STDARGS, jlong ctx,
     memcpy(buf, SSL_CIPHERS_ALWAYS_DISABLED, strlen(SSL_CIPHERS_ALWAYS_DISABLED));
     memcpy(buf + strlen(SSL_CIPHERS_ALWAYS_DISABLED), J2S(ciphers), strlen(J2S(ciphers)));
     buf[len - 1] = '\0';
-    if (!SSL_CTX_set_cipher_list(c->ctx, buf)) {
+    if (!ssl_methods.SSL_CTX_set_cipher_list(c->ctx, buf)) {
 #else
-    if (!SSL_CTX_set_cipher_list(c->ctx, J2S(ciphers))) {
+    if (!ssl_methods.SSL_CTX_set_cipher_list(c->ctx, J2S(ciphers))) {
 #endif
         char err[256];
         ERR_error_string(ERR_get_error(), err);
@@ -456,7 +456,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificateChainFile)(TCN_STDARGS, j
     TCN_ASSERT(ctx != 0);
     if (!J2S(file))
         return JNI_FALSE;
-    if (SSL_CTX_use_certificate_chain(c->ctx, J2S(file), skipfirst) > 0)
+    if (ssl_methods.SSL_CTX_use_certificate_chain(c->ctx, J2S(file), skipfirst) > 0)
         rv = JNI_TRUE;
     TCN_FREE_CSTRING(file);
     return rv;
@@ -480,7 +480,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCACertificate)(TCN_STDARGS,
    /*
      * Configure Client Authentication details
      */
-    if (!SSL_CTX_load_verify_locations(c->ctx,
+    if (!ssl_methods.SSL_CTX_load_verify_locations(c->ctx,
                                        J2S(file), J2S(path))) {
         char err[256];
         ERR_error_string(ERR_get_error(), err);
@@ -489,18 +489,18 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCACertificate)(TCN_STDARGS,
         rv = JNI_FALSE;
         goto cleanup;
     }
-    c->store = SSL_CTX_get_cert_store(c->ctx);
+    c->store = ssl_methods.SSL_CTX_get_cert_store(c->ctx);
     if (c->mode) {
         STACK_OF(X509_NAME) *ca_certs;
         c->ca_certs++;
-        ca_certs = SSL_CTX_get_client_CA_list(c->ctx);
+        ca_certs = ssl_methods.SSL_CTX_get_client_CA_list(c->ctx);
         if (ca_certs == NULL) {
-            SSL_load_client_CA_file(J2S(file));
+            ssl_methods.SSL_load_client_CA_file(J2S(file));
             if (ca_certs != NULL)
-                SSL_CTX_set_client_CA_list(c->ctx, ca_certs);
+                ssl_methods.SSL_CTX_set_client_CA_list(c->ctx, ca_certs);
         }
         else {
-            if (!SSL_add_file_cert_subjects_to_stack(ca_certs, J2S(file)))
+            if (!ssl_methods.SSL_add_file_cert_subjects_to_stack(ca_certs, J2S(file)))
                 ca_certs = NULL;
         }
         if (ca_certs == NULL && c->verify_mode == SSL_CVERIFY_REQUIRE) {
@@ -552,8 +552,8 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setVerify)(TCN_STDARGS, jlong ctx,
         (c->verify_mode == SSL_CVERIFY_OPTIONAL_NO_CA))
         verify |= SSL_VERIFY_PEER;
     if (!c->store) {
-        if (SSL_CTX_set_default_verify_paths(c->ctx)) {
-            c->store = SSL_CTX_get_cert_store(c->ctx);
+        if (ssl_methods.SSL_CTX_set_default_verify_paths(c->ctx)) {
+            c->store = ssl_methods.SSL_CTX_get_cert_store(c->ctx);
             X509_STORE_set_flags(c->store, 0);
         }
         else {
@@ -561,7 +561,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setVerify)(TCN_STDARGS, jlong ctx,
         }
     }
 
-    SSL_CTX_set_verify(c->ctx, verify, SSL_callback_SSL_verify);
+    ssl_methods.SSL_CTX_set_verify(c->ctx, verify, SSL_callback_SSL_verify);
 }
 
 static EVP_PKEY *load_pem_key(tcn_ssl_ctxt_t *c, const char *file)
@@ -649,6 +649,7 @@ static int ssl_load_pkcs12(tcn_ssl_ctxt_t *c, const char *file,
     else {
         if (!cb_data)
             cb_data = &tcn_password_callback;
+            // TODO dynload
         len = SSL_password_callback(buff, PEM_BUFSIZE, 0, cb_data);
         if (len < 0) {
             /* Passpharse callback error */
@@ -724,19 +725,19 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS,jlong ctx,
         goto cleanup;
     }
 
-    if (SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
+    if (ssl_methods.SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Error setting certificate (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
+    if (ssl_methods.SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Error setting private key (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (SSL_CTX_check_private_key(c->ctx) <= 0) {
+    if (ssl_methods.SSL_CTX_check_private_key(c->ctx) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Private key does not match the certificate public key (%s)",
                   err);
@@ -755,7 +756,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificateRaw)(TCN_STDARGS, jlong c
                                                          jbyteArray javaCert, jbyteArray javaKey, jint idx)
 {
 #ifdef HAVE_ECC
-#if defined(SSL_CTX_set_ecdh_auto)
+#if defined(ssl_methods.SSL_CTX_set_ecdh_auto)
     EC_KEY *eckey = NULL;
 #endif
 #endif
@@ -822,19 +823,19 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificateRaw)(TCN_STDARGS, jlong c
     }
     c->keys[idx] = evp;
 
-    if (SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
+    if (ssl_methods.SSL_CTX_use_certificate(c->ctx, c->certs[idx]) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Error setting certificate (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
+    if (ssl_methods.SSL_CTX_use_PrivateKey(c->ctx, c->keys[idx]) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Error setting private key (%s)", err);
         rv = JNI_FALSE;
         goto cleanup;
     }
-    if (SSL_CTX_check_private_key(c->ctx) <= 0) {
+    if (ssl_methods.SSL_CTX_check_private_key(c->ctx) <= 0) {
         ERR_error_string(ERR_get_error(), err);
         tcn_Throw(e, "Private key does not match the certificate public key (%s)",
                   err);
@@ -850,15 +851,15 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificateRaw)(TCN_STDARGS, jlong c
     /*
      * TODO try to read the ECDH curve name from somewhere...
      */
-#if defined(SSL_CTX_set_ecdh_auto)
-    SSL_CTX_set_ecdh_auto(c->ctx, 1);
+#if defined(ssl_methods.SSL_CTX_set_ecdh_auto)
+    ssl_methods.SSL_CTX_set_ecdh_auto(c->ctx, 1);
 #else
     eckey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    SSL_CTX_set_tmp_ecdh(c->ctx, eckey);
+    ssl_methods.SSL_CTX_set_tmp_ecdh(c->ctx, eckey);
     EC_KEY_free(eckey);
 #endif
 #endif
-    SSL_CTX_set_tmp_dh_callback(c->ctx, SSL_callback_tmp_DH);
+    ssl_methods.SSL_CTX_set_tmp_dh_callback(c->ctx, SSL_callback_tmp_DH);
 cleanup:
     free(key);
     free(cert);
@@ -1073,9 +1074,9 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setNpnProtos)(TCN_STDARGS, jlong ctx, jobje
 
         // depending on if it's client mode or not we need to call different functions.
         if (c->mode == SSL_MODE_CLIENT)  {
-            SSL_CTX_set_next_proto_select_cb(c->ctx, SSL_callback_select_next_proto, (void *)c);
+            ssl_methods.SSL_CTX_set_next_proto_select_cb(c->ctx, SSL_callback_select_next_proto, (void *)c);
         } else {
-            SSL_CTX_set_next_protos_advertised_cb(c->ctx, SSL_callback_next_protos, (void *)c);
+            ssl_methods.SSL_CTX_set_next_protos_advertised_cb(c->ctx, SSL_callback_next_protos, (void *)c);
         }
     }
 }
@@ -1093,9 +1094,9 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setAlpnProtos)(TCN_STDARGS, jlong ctx, jobj
 
         // depending on if it's client mode or not we need to call different functions.
         if (c->mode == SSL_MODE_CLIENT)  {
-            SSL_CTX_set_alpn_protos(c->ctx, c->alpn_proto_data, c->alpn_proto_len);
+            ssl_methods.SSL_CTX_set_alpn_protos(c->ctx, c->alpn_proto_data, c->alpn_proto_len);
         } else {
-            SSL_CTX_set_alpn_select_cb(c->ctx, SSL_callback_alpn_select_proto, (void *) c);
+            ssl_methods.SSL_CTX_set_alpn_select_cb(c->ctx, SSL_callback_alpn_select_proto, (void *) c);
 
         }
     }
@@ -1104,7 +1105,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setAlpnProtos)(TCN_STDARGS, jlong ctx, jobj
 TCN_IMPLEMENT_CALL(void, SSLContext, enableAlpn)(TCN_STDARGS, jlong ctx)
 {
 
-    if(SSL_CTX_set_alpn_protos == NULL) {
+    if(ssl_methods.SSL_CTX_set_alpn_protos == NULL) {
         return;
     }
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
@@ -1112,12 +1113,12 @@ TCN_IMPLEMENT_CALL(void, SSLContext, enableAlpn)(TCN_STDARGS, jlong ctx)
     TCN_ASSERT(ctx != 0);
     UNREFERENCED(o);
 
-    SSL_CTX_set_alpn_select_cb(c->ctx, SSL_callback_alpn_select_proto, (void *) c);
+    ssl_methods.SSL_CTX_set_alpn_select_cb(c->ctx, SSL_callback_alpn_select_proto, (void *) c);
 
 }
 
 TCN_IMPLEMENT_CALL(void, SSLContext, setServerALPNCallback)(TCN_STDARGS, jlong ssl, jobject callback) {
-    if(SSL_CTX_set_alpn_protos == NULL) {
+    if(ssl_methods.SSL_CTX_set_alpn_protos == NULL) {
         return;
     }
     SSL *ssl_ = J2P(ssl, SSL *);
@@ -1126,7 +1127,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setServerALPNCallback)(TCN_STDARGS, jlong s
         throwIllegalStateException(e, "ssl is null");
         return;
     }
-    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl_, 0);
+    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *) ssl_methods.SSL_get_ex_data(ssl_, 0);
 
     con->alpn_selection_callback = (*e)->NewGlobalRef(e, callback);
 }
@@ -1134,26 +1135,26 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setServerALPNCallback)(TCN_STDARGS, jlong s
 TCN_IMPLEMENT_CALL(jlong, SSLContext, setSessionCacheMode)(TCN_STDARGS, jlong ctx, jlong mode)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    return SSL_CTX_set_session_cache_mode(c->ctx, mode);
+    return ssl_methods.SSL_CTX_set_session_cache_mode(c->ctx, mode);
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, getSessionCacheMode)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    return SSL_CTX_get_session_cache_mode(c->ctx);
+    return ssl_methods.SSL_CTX_get_session_cache_mode(c->ctx);
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, setSessionCacheTimeout)(TCN_STDARGS, jlong ctx, jlong timeout)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_set_timeout(c->ctx, timeout);
+    jlong rv = ssl_methods.SSL_CTX_set_timeout(c->ctx, timeout);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, getSessionCacheTimeout)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    return SSL_CTX_get_timeout(c->ctx);
+    return ssl_methods.SSL_CTX_get_timeout(c->ctx);
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, setSessionCacheSize)(TCN_STDARGS, jlong ctx, jlong size)
@@ -1163,8 +1164,8 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, setSessionCacheSize)(TCN_STDARGS, jlong ct
 
     // Also allow size of 0 which is unlimited
     if (size >= 0) {
-      SSL_CTX_set_session_cache_mode(c->ctx, SSL_SESS_CACHE_SERVER);
-      rv = SSL_CTX_sess_set_cache_size(c->ctx, size);
+      ssl_methods.SSL_CTX_set_session_cache_mode(c->ctx, SSL_SESS_CACHE_SERVER);
+      rv = ssl_methods.SSL_CTX_sess_set_cache_size(c->ctx, size);
     }
 
     return rv;
@@ -1173,90 +1174,90 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, setSessionCacheSize)(TCN_STDARGS, jlong ct
 TCN_IMPLEMENT_CALL(jlong, SSLContext, getSessionCacheSize)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    return SSL_CTX_sess_get_cache_size(c->ctx);
+    return ssl_methods.SSL_CTX_sess_get_cache_size(c->ctx);
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionNumber)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_number(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_number(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionConnect)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_connect(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_connect(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionConnectGood)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_connect_good(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_connect_good(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionConnectRenegotiate)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_connect_renegotiate(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_connect_renegotiate(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionAccept)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_accept(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_accept(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionAcceptGood)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_accept_good(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_accept_good(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionAcceptRenegotiate)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_accept_renegotiate(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_accept_renegotiate(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionHits)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_hits(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_hits(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionCbHits)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_cb_hits(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_cb_hits(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionMisses)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_misses(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_misses(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionTimeouts)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_timeouts(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_timeouts(c->ctx);
     return rv;
 }
 
 TCN_IMPLEMENT_CALL(jlong, SSLContext, sessionCacheFull)(TCN_STDARGS, jlong ctx)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-    jlong rv = SSL_CTX_sess_cache_full(c->ctx);
+    jlong rv = ssl_methods.SSL_CTX_sess_cache_full(c->ctx);
     return rv;
 }
 
@@ -1277,7 +1278,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setSessionTicketKeys)(TCN_STDARGS, jlong ct
     }
 
     b = (*e)->GetByteArrayElements(e, keys, NULL);
-    SSL_CTX_set_tlsext_ticket_keys(c->ctx, b, TICKET_KEYS_SIZE);
+    ssl_methods.SSL_CTX_set_tlsext_ticket_keys(c->ctx, b, TICKET_KEYS_SIZE);
     (*e)->ReleaseByteArrayElements(e, keys, b, 0);
 }
 
@@ -1376,7 +1377,7 @@ static const char* SSL_authentication_method(const SSL* ssl) {
 
 static int SSL_cert_verify(X509_STORE_CTX *ctx, void *arg) {
     /* Get Apache context back through OpenSSL context */
-    SSL *ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+    SSL *ssl = X509_STORE_CTX_get_ex_data(ctx, ssl_methods.SSL_get_ex_data_X509_STORE_CTX_idx());
     tcn_ssl_ctxt_t *c = SSL_get_app_data2(ssl);
 
 
@@ -1422,7 +1423,7 @@ static int SSL_cert_verify(X509_STORE_CTX *ctx, void *arg) {
         OPENSSL_free(buf);
     }
 
-    authMethod = SSL_authentication_method(ssl);
+    authMethod = SSL_authentication_method(ssl); // TODO dynload
     authMethodString = (*e)->NewStringUTF(e, authMethod);
 
     result = (*e)->CallBooleanMethod(e, c->verifier, c->verifier_method, P2J(ssl), array,
@@ -1445,7 +1446,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setCertVerifyCallback)(TCN_STDARGS, jlong c
     TCN_ASSERT(ctx != 0);
 
     if (verifier == NULL) {
-        SSL_CTX_set_cert_verify_callback(c->ctx, NULL, NULL);
+        ssl_methods.SSL_CTX_set_cert_verify_callback(c->ctx, NULL, NULL);
     } else {
         jclass verifier_class = (*e)->GetObjectClass(e, verifier);
         jmethodID method = (*e)->GetMethodID(e, verifier_class, "verify", "(J[[BLjava/lang/String;)Z");
@@ -1460,7 +1461,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setCertVerifyCallback)(TCN_STDARGS, jlong c
         c->verifier = (*e)->NewGlobalRef(e, verifier);
         c->verifier_method = method;
 
-        SSL_CTX_set_cert_verify_callback(c->ctx, SSL_cert_verify, NULL);
+        ssl_methods.SSL_CTX_set_cert_verify_callback(c->ctx, SSL_cert_verify, NULL);
     }
 }
 
@@ -1478,7 +1479,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setSessionIdContext)(TCN_STDARGS, jlong
 
     (*e)->GetByteArrayRegion(e, sidCtx, 0, len, (jbyte*) buf);
 
-    res = SSL_CTX_set_session_id_context(c->ctx, buf, len);
+    res = ssl_methods.SSL_CTX_set_session_id_context(c->ctx, buf, len);
     free(buf);
 
     if (res == 1) {
@@ -1489,5 +1490,5 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setSessionIdContext)(TCN_STDARGS, jlong
 
 /* End of netty-tc-native add */
 #else
-/* OpenSSL is not supported.*/
+/* TODO COMPILE ERROR: OpenSSL is not supported.*/
 #endif

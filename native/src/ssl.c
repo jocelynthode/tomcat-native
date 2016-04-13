@@ -474,13 +474,13 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     OPENSSL_malloc_init();
 #endif
     ERR_load_crypto_strings();
-    SSL_load_error_strings();
-    SSL_library_init();
-    OPENSSL_add_all_algorithms_noconf();
+    ssl_methods.SSL_CTX_load_error_strings();
+    ssl_methods.SSL_CTX_library_init();
+    crypto_methods.OPENSSL_add_all_algorithms_noconf();
 #if HAVE_ENGINE_LOAD_BUILTIN_ENGINES
     ENGINE_load_builtin_engines();
 #endif
-    OPENSSL_load_builtin_modules();
+    crypto_methdos.OPENSSL_load_builtin_modules();
 
     /* Initialize thread support */
     ssl_thread_setup();
@@ -518,7 +518,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     }
 
     /* For SSL_get_app_data2() and SSL_get_app_data3() at request time */
-    SSL_init_app_data2_3_idx();
+    SSL_init_app_data2_3_idx(); // TODO: dynload replace ?
 
     memset(&tcn_password_callback, 0, sizeof(tcn_pass_cb_t));
 
@@ -638,6 +638,7 @@ static int jbs_new(BIO *bi)
 {
     BIO_JAVA *j;
 
+    // TODO: dynlod
     if ((j = OPENSSL_malloc(sizeof(BIO_JAVA))) == NULL)
         return 0;
     j->refcount  = 1;
@@ -661,6 +662,7 @@ static int jbs_free(BIO *bi)
             tcn_get_java_env(&e);
             TCN_UNLOAD_CLASS(e, j->cb.obj);
         }
+        // TODO dynload
         OPENSSL_free(bi->ptr);
     }
     bi->ptr = NULL;
@@ -842,7 +844,7 @@ TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
     UNREFERENCED_STDARGS;
 
     TCN_ASSERT(ctx != 0);
-    ssl = SSL_new(c->ctx);
+    ssl = ssl_methods.SSL_new(c->ctx);
     if (ssl == NULL) {
         throwIllegalStateException(e, "cannot create new ssl");
         return 0;
@@ -861,20 +863,20 @@ TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
     SSL_set_app_data3(ssl, handshakeCount);
 
     /* Add callback to keep track of handshakes. */
-    SSL_CTX_set_info_callback(c->ctx, ssl_info_callback);
+    ssl_methods.SSL_CTX_set_info_callback(c->ctx, ssl_info_callback);
 
     if (server) {
-        SSL_set_accept_state(ssl);
+        ssl_methods.SSL_set_accept_state(ssl);
     } else {
-        SSL_set_connect_state(ssl);
+        ssl_methods.SSL_set_connect_state(ssl);
     }
 
     /* Setup verify and seed */
-    SSL_set_verify_result(ssl, X509_V_OK);
+    ssl_methods.SSL_set_verify_result(ssl, X509_V_OK);
 
     /* Store for later usage in SSL_callback_SSL_verify */
     SSL_set_app_data2(ssl, c);
-    SSL_set_ex_data(ssl,0,(char *)con);
+    ssl_methods.SSL_set_ex_data(ssl,0,(char *)con);
     return P2J(ssl);
 }
 
@@ -890,7 +892,7 @@ TCN_IMPLEMENT_CALL(jint /* nbytes */, SSL, pendingWrittenBytesInBIO)(TCN_STDARGS
 TCN_IMPLEMENT_CALL(jint, SSL, pendingReadableBytesInSSL)(TCN_STDARGS, jlong ssl /* SSL * */) {
     UNREFERENCED_STDARGS;
 
-    return SSL_pending(J2P(ssl, SSL *));
+    return ssl_methods.SSL_pending(J2P(ssl, SSL *));
 }
 
 /* Write wlen bytes from wbuf into bio */
@@ -921,7 +923,7 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, writeToSSL)(TCN_STDARGS,
                                                        jint wlen /* sizeof(wbuf) */) {
     UNREFERENCED_STDARGS;
 
-    return SSL_write(J2P(ssl, SSL *), J2P(wbuf, void *), wlen);
+    return ssl_methods.SSL_write(J2P(ssl, SSL *), J2P(wbuf, void *), wlen);
 }
 
 /* Read up to rlen bytes of application data from the given SSL BIO (decrypt) */
@@ -931,7 +933,7 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, readFromSSL)(TCN_STDARGS,
                                                         jint rlen /* sizeof(rbuf) - 1 */) {
     UNREFERENCED_STDARGS;
 
-    return SSL_read(J2P(ssl, SSL *), J2P(rbuf, void *), rlen);
+    return ssl_methods.SSL_read(J2P(ssl, SSL *), J2P(rbuf, void *), rlen);
 }
 
 /* Get the shutdown status of the engine */
@@ -939,14 +941,14 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, getShutdown)(TCN_STDARGS,
                                                         jlong ssl /* SSL * */) {
     UNREFERENCED_STDARGS;
 
-    return SSL_get_shutdown(J2P(ssl, SSL *));
+    return ssl_methods.SSL_get_shutdown(J2P(ssl, SSL *));
 }
 
 /* Free the SSL * and its associated internal BIO */
 TCN_IMPLEMENT_CALL(void, SSL, freeSSL)(TCN_STDARGS,
                                        jlong ssl /* SSL * */) {
     SSL *ssl_ = J2P(ssl, SSL *);
-    int *handshakeCount = SSL_get_app_data3(ssl_);
+    int *handshakeCount = ssl_methods.SSL_get_app_data3(ssl_);
 
     UNREFERENCED_STDARGS;
 
@@ -960,7 +962,7 @@ TCN_IMPLEMENT_CALL(void, SSL, freeSSL)(TCN_STDARGS,
     }
     free(con);
 
-    SSL_free(ssl_);
+    ssl_methods.SSL_free(ssl_);
 
 //    ssl_init_cleanup();
 }
@@ -984,7 +986,7 @@ TCN_IMPLEMENT_CALL(jlong, SSL, makeNetworkBIO)(TCN_STDARGS,
         goto fail;
     }
 
-    SSL_set_bio(ssl_, internal_bio, internal_bio);
+    ssl_methods.SSL_set_bio(ssl_, internal_bio, internal_bio);
 
     return P2J(network_bio);
  fail:
@@ -1006,7 +1008,7 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, shutdownSSL)(TCN_STDARGS,
                                                         jlong ssl /* SSL * */) {
     UNREFERENCED_STDARGS;
 
-    return SSL_shutdown(J2P(ssl, SSL *));
+    return ssl_methods.SSL_shutdown(J2P(ssl, SSL *));
 }
 
 /* Read which cipher was negotiated for the given SSL *. */
@@ -1015,7 +1017,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getCipherForSSL)(TCN_STDARGS,
 {
     UNREFERENCED_STDARGS;
 
-    return AJP_TO_JSTRING(SSL_CIPHER_get_name(SSL_get_current_cipher(J2P(ssl, SSL*))));
+    return AJP_TO_JSTRING(ssl_methods.SSL_CIPHER_get_name(ssl_methods.SSL_get_current_cipher(J2P(ssl, SSL*))));
 }
 
 /* Read which protocol was negotiated for the given SSL *. */
@@ -1024,7 +1026,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getVersion)(TCN_STDARGS,
 {
     UNREFERENCED_STDARGS;
 
-    return AJP_TO_JSTRING(SSL_get_version(J2P(ssl, SSL*)));
+    return AJP_TO_JSTRING(ssl_methods.SSL_get_version(J2P(ssl, SSL*)));
 }
 
 /* Is the handshake over yet? */
@@ -1038,7 +1040,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, isInInit)(TCN_STDARGS,
         throwIllegalArgumentException(e, "ssl is null");
         return 0;
     } else {
-        return (SSL_state(ssl_) & SSL_ST_INIT) || SSL_renegotiate_pending(ssl_);
+        return (ssl_methods.SSL_state(ssl_) & SSL_ST_INIT) || ssl_methods.SSL_renegotiate_pending(ssl_);
     }
 }
 
@@ -1052,7 +1054,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, doHandshake)(TCN_STDARGS,
 
     UNREFERENCED(o);
 
-    return SSL_do_handshake(ssl_);
+    return ssl_methods.SSL_do_handshake(ssl_);
 }
 
 TCN_IMPLEMENT_CALL(jint, SSL, renegotiate)(TCN_STDARGS,
@@ -1065,7 +1067,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, renegotiate)(TCN_STDARGS,
 
     UNREFERENCED(o);
 
-    return SSL_renegotiate(ssl_);
+    return ssl_methods.SSL_renegotiate(ssl_);
 }
 
 /* Read which protocol was negotiated for the given SSL *. */
@@ -1082,6 +1084,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getNextProtoNegotiated)(TCN_STDARGS,
 
     UNREFERENCED(o);
 
+    // TODO dynload
     SSL_get0_next_proto_negotiated(ssl_, &proto, &proto_len);
     return tcn_new_stringn(e, (const char *)proto, (size_t) proto_len);
 }
@@ -1104,7 +1107,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getAlpnSelected)(TCN_STDARGS,
 
     UNREFERENCED(o);
 
-    SSL_get0_alpn_selected(ssl_, &proto, &proto_len);
+    ssl_methods.SSL_get0_alpn_selected(ssl_, &proto, &proto_len);
     return tcn_new_stringn(e, (const char *) proto, (size_t) proto_len);
 }
 
@@ -1130,7 +1133,7 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getPeerCertChain)(TCN_STDARGS,
     UNREFERENCED(o);
 
     // Get a stack of all certs in the chain.
-    sk = SSL_get_peer_cert_chain(ssl_);
+    sk = ssl_methods.SSL_get_peer_cert_chain(ssl_);
 
     len = sk_X509_num(sk);
     if (len <= 0) {
@@ -1146,6 +1149,7 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getPeerCertChain)(TCN_STDARGS,
         buf = NULL;
         length = i2d_X509(cert, &buf);
         if (length < 0) {
+            // TODO dynload
             OPENSSL_free(buf);
             /* In case of error just return an empty byte[][] */
             return (*e)->NewObjectArray(e, 0, byteArrayClass, NULL);
@@ -1183,7 +1187,7 @@ TCN_IMPLEMENT_CALL(jbyteArray, SSL, getPeerCertificate)(TCN_STDARGS,
     UNREFERENCED(o);
 
     /* Get a stack of all certs in the chain */
-    cert = SSL_get_peer_certificate(ssl_);
+    cert = ssl_methods.SSL_get_peer_certificate(ssl_);
     if (cert == NULL) {
         return NULL;
     }
@@ -1225,8 +1229,8 @@ TCN_IMPLEMENT_CALL(jlong, SSL, getTime)(TCN_STDARGS, jlong ssl)
 
     UNREFERENCED(o);
 
-    session  = SSL_get_session(ssl_);
-    return SSL_get_time(session);
+    session  = ssl_methods.SSL_get_session(ssl_);
+    return ssl_methods.SSL_get_time(session);
 }
 
 TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
@@ -1241,6 +1245,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
         return;
     }
 
+    // TODO dynload
     c = SSL_get_app_data2(ssl_);
 
     verify = SSL_VERIFY_NONE;
@@ -1266,8 +1271,8 @@ TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
         (c->verify_mode == SSL_CVERIFY_OPTIONAL_NO_CA))
         verify |= SSL_VERIFY_PEER;
     if (!c->store) {
-        if (SSL_CTX_set_default_verify_paths(c->ctx)) {
-            c->store = SSL_CTX_get_cert_store(c->ctx);
+        if (ssl_methods.SSL_CTX_set_default_verify_paths(c->ctx)) {
+            c->store = ssl_methods.SSL_CTX_get_cert_store(c->ctx);
             X509_STORE_set_flags(c->store, 0);
         }
         else {
@@ -1275,7 +1280,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
         }
     }
 
-    SSL_set_verify(ssl_, verify, SSL_callback_SSL_verify);
+    ssl_methods.SSL_set_verify(ssl_, verify, SSL_callback_SSL_verify);
 }
 
 TCN_IMPLEMENT_CALL(void, SSL, setOptions)(TCN_STDARGS, jlong ssl,
@@ -1296,6 +1301,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setOptions)(TCN_STDARGS, jlong ssl,
         opt &= ~0x00040000;
     }
 #endif
+    // TODO dynload
     SSL_set_options(ssl_, opt);
 }
 
@@ -1310,6 +1316,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, getOptions)(TCN_STDARGS, jlong ssl)
         return 0;
     }
 
+    // TODO dynload
     return SSL_get_options(ssl_);
 }
 
@@ -1331,8 +1338,8 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getCiphers)(TCN_STDARGS, jlong ssl)
         return NULL;
     }
 
-    sk = SSL_get_ciphers(ssl_);
-    len = sk_SSL_CIPHER_num(sk);
+    sk = ssl_methods.SSL_get_ciphers(ssl_);
+    len = sk_SSL_CIPHER_num(sk);  // TODO dynload
 
     if (len <= 0) {
         /* No peer certificate chain as no auth took place yet, or the auth was not successful. */
@@ -1344,7 +1351,7 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getCiphers)(TCN_STDARGS, jlong ssl)
 
     for (i = 0; i < len; i++) {
         cipher = (SSL_CIPHER*) sk_SSL_CIPHER_value(sk, i);
-        name = SSL_CIPHER_get_name(cipher);
+        name = ssl_methods.SSL_CIPHER_get_name(cipher);
 
         c_name = (*e)->NewStringUTF(e, name);
         (*e)->SetObjectArrayElement(e, array, i, c_name);
@@ -1370,7 +1377,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, setCipherSuites)(TCN_STDARGS, jlong ssl,
     if (!J2S(ciphers)) {
         return JNI_FALSE;
     }
-    if (!SSL_set_cipher_list(ssl_, J2S(ciphers))) {
+    if (!ssl_methods.SSL_set_cipher_list(ssl_, J2S(ciphers))) {
         char err[256];
         ERR_error_string(ERR_get_error(), err);
         throwIllegalStateException(e, err);
@@ -1384,7 +1391,7 @@ jbyteArray getSessionId(JNIEnv *e, SSL_SESSION *session) {
 
     unsigned int len;
     const unsigned char *session_id;
-    session_id = SSL_SESSION_get_id(session, &len);
+    session_id = ssl_methods.SSL_SESSION_get_id(session, &len);
 
     if (len == 0 || session_id == NULL) {
         return NULL;
@@ -1405,7 +1412,7 @@ TCN_IMPLEMENT_CALL(jbyteArray, SSL, getSessionId)(TCN_STDARGS, jlong ssl)
         throwIllegalArgumentException(e, "ssl is null");
         return NULL;
     }
-    session = SSL_get_session(ssl_);
+    session = ssl_methods.SSL_get_session(ssl_);
     return getSessionId(e, session);
 }
 
@@ -1428,7 +1435,7 @@ int new_session_cb(SSL * ssl, SSL_SESSION * session) {
     return 1;
 }
 void remove_session_cb(SSL_CTX *ctx, SSL_SESSION * session) {
-     tcn_ssl_ctxt_t  *c = SSL_CTX_get_ex_data(ctx,0);
+     tcn_ssl_ctxt_t  *c = ssl_methods.SSL_CTX_get_ex_data(ctx,0);
     JavaVM *javavm = tcn_get_java_vm();
     JNIEnv *e;
     (*javavm)->AttachCurrentThread(javavm, (void **)&e, NULL);
@@ -1441,14 +1448,14 @@ void remove_session_cb(SSL_CTX *ctx, SSL_SESSION * session) {
 
 void setup_session_context(JNIEnv *e, tcn_ssl_ctxt_t *c) {
  /* Default session context id and cache size */
-    SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_SIZE,SSL_DEFAULT_CACHE_SIZE,NULL);
+    ssl_methods.SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_SIZE,SSL_DEFAULT_CACHE_SIZE,NULL);
     /* Session cache is disabled by default */
-	SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_MODE,SSL_SESS_CACHE_OFF,NULL);
+	ssl_methods.SSL_CTX_ctrl(c->ctx,SSL_CTRL_SET_SESS_CACHE_MODE,SSL_SESS_CACHE_OFF,NULL);
     /* Longer session timeout */
-    SSL_CTX_set_timeout(c->ctx, 14400);
+    ssl_methods.SSL_CTX_set_timeout(c->ctx, 14400);
 
-    SSL_CTX_sess_set_new_cb(c->ctx, &new_session_cb);
-    SSL_CTX_sess_set_remove_cb(c->ctx, &remove_session_cb);
+    ssl_methods.SSL_CTX_sess_set_new_cb(c->ctx, &new_session_cb);
+    ssl_methods.SSL_CTX_sess_set_remove_cb(c->ctx, &remove_session_cb);
 }
 
 

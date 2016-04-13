@@ -63,7 +63,7 @@ void SSL_init_app_data2_3_idx(void)
     /* we _do_ need to call this twice */
     for (i = 0; i <= 1; i++) {
         SSL_app_data2_idx =
-            SSL_get_ex_new_index(0,
+            ssl_methods.SSL_get_ex_new_index(0,
                                  "Second Application Data for SSL",
                                  NULL, NULL, NULL);
     }
@@ -73,7 +73,7 @@ void SSL_init_app_data2_3_idx(void)
     }
 
     SSL_app_data3_idx =
-            SSL_get_ex_new_index(0,
+            ssl_methods.SSL_get_ex_new_index(0,
                                  "Third Application Data for SSL",
                                   NULL, NULL, NULL);
 
@@ -81,24 +81,24 @@ void SSL_init_app_data2_3_idx(void)
 
 tcn_ssl_ctxt_t *SSL_get_app_data2(SSL *ssl)
 {
-    return (tcn_ssl_ctxt_t *)SSL_get_ex_data(ssl, SSL_app_data2_idx);
+    return (tcn_ssl_ctxt_t *)ssl_methods.SSL_get_ex_data(ssl, SSL_app_data2_idx);
 }
 
 void SSL_set_app_data2(SSL *ssl, void *arg)
 {
-    SSL_set_ex_data(ssl, SSL_app_data2_idx, (char *)arg);
+    ssl_methods.SSL_set_ex_data(ssl, SSL_app_data2_idx, (char *)arg);
     return;
 }
 
 
 void *SSL_get_app_data3(const SSL *ssl)
 {
-    return SSL_get_ex_data(ssl, SSL_app_data3_idx);
+    return ssl_methods.SSL_get_ex_data(ssl, SSL_app_data3_idx);
 }
 
 void SSL_set_app_data3(SSL *ssl, void *arg)
 {
-    SSL_set_ex_data(ssl, SSL_app_data3_idx, arg);
+    ssl_methods.SSL_set_ex_data(ssl, SSL_app_data3_idx, arg);
 }
 
 /* Simple echo password prompting */
@@ -168,7 +168,7 @@ int SSL_password_callback(char *buf, int bufsiz, int verify,
         return (int)strlen(buf);
     }
     else {
-        if (SSL_password_prompt(cb_data) > 0)
+        if (SSL_password_prompt(cb_data) > 0)  // TODO dynload
             strncpy(buf, cb_data->password, bufsiz);
     }
     buf[bufsiz - 1] = '\0';
@@ -211,7 +211,7 @@ EC_GROUP *SSL_ec_GetParamFromFile(const char *file)
  */
 DH *SSL_callback_tmp_DH(SSL *ssl, int export, int keylen)
 {
-    EVP_PKEY *pkey = SSL_get_privatekey(ssl);
+    EVP_PKEY *pkey = ssl_methods.SSL_get_privatekey(ssl);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     int type = pkey != NULL ? EVP_PKEY_type(pkey->type) : EVP_PKEY_NONE;
 #else
@@ -233,6 +233,7 @@ DH *SSL_callback_tmp_DH(SSL *ssl, int export, int keylen)
     if ((type == EVP_PKEY_RSA) || (type == EVP_PKEY_DSA)) {
         keylen = EVP_PKEY_bits(pkey);
     }
+    // TODO dynload
     return SSL_get_dh_params(keylen);
 }
 
@@ -269,12 +270,12 @@ int SSL_CTX_use_certificate_chain(SSL_CTX *ctx, const char *file,
     }
 
     /* free a perhaps already configured extra chain */
-    SSL_CTX_clear_extra_chain_certs(ctx);
+    ssl_methods.SSL_CTX_clear_extra_chain_certs(ctx);
 
     /* create new extra chain by loading the certs */
     n = 0;
     while ((x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL)) != NULL) {
-        if (!SSL_CTX_add_extra_chain_cert(ctx, x509)) {
+        if (!ssl_methods.SSL_CTX_add_extra_chain_cert(ctx, x509)) {
             X509_free(x509);
             BIO_free(bio);
             return -1;
@@ -456,7 +457,7 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
 {
    /* Get Apache context back through OpenSSL context */
     SSL *ssl = X509_STORE_CTX_get_ex_data(ctx,
-                                          SSL_get_ex_data_X509_STORE_CTX_idx());
+                                          ssl_methods.SSL_get_ex_data_X509_STORE_CTX_idx());
     tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_app_data(ssl);
     /* Get verify ingredients */
     int errnum   = X509_STORE_CTX_get_error(ctx);
@@ -472,7 +473,7 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
     if (SSL_VERIFY_ERROR_IS_OPTIONAL(errnum) &&
         (verify == SSL_CVERIFY_OPTIONAL_NO_CA)) {
         ok = 1;
-        SSL_set_verify_result(ssl, X509_V_OK);
+        ssl_methods.SSL_set_verify_result(ssl, X509_V_OK);
     }
 
 #ifdef HAVE_OCSP_STAPLING
@@ -555,7 +556,7 @@ void SSL_callback_handshake(const SSL *ssl, int where, int rc)
      * state machine and move to ABORT if a Client Hello is being
      * read. */
     if ((where & SSL_CB_ACCEPT_LOOP) && con->reneg_state == RENEG_REJECT) {
-        int state = SSL_get_state(ssl);
+        int state = SSL_get_state(ssl); // TODO dynload
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
         if (state == SSL3_ST_SR_CLNT_HELLO_A
