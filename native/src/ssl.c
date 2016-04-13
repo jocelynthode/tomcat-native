@@ -242,12 +242,12 @@ static struct dhparam {
     DH *dh;                           /* ...this, used for keys.... */
     const unsigned int min;           /* ...of length >= this. */
 } dhparams[] = {
-    { get_rfc3526_prime_8192, NULL, 6145 },
-    { get_rfc3526_prime_6144, NULL, 4097 },
-    { get_rfc3526_prime_4096, NULL, 3073 },
-    { get_rfc3526_prime_3072, NULL, 2049 },
-    { get_rfc3526_prime_2048, NULL, 1025 },
-    { get_rfc2409_prime_1024, NULL, 0 }
+    { crypto_methods.get_rfc3526_prime_8192, NULL, 6145 },
+    { crypto_methods.get_rfc3526_prime_6144, NULL, 4097 },
+    { crypto_methods.get_rfc3526_prime_4096, NULL, 3073 },
+    { crypto_methods.get_rfc3526_prime_3072, NULL, 2049 },
+    { crypto_methods.get_rfc3526_prime_2048, NULL, 1025 },
+    { crypto_methods.get_rfc2409_prime_1024, NULL, 0 }
 };
 
 static void init_dh_params(void)
@@ -340,7 +340,7 @@ static apr_status_t ssl_init_cleanup()
     /*
      * Try to kill the internals of the SSL library.
      */
-    /* Corresponds to OPENSSL_load_builtin_modules():
+    /* Corresponds to crypto_methods.OPENSSL_load_builtin_modules():
      * XXX: borrowed from apps.h, but why not CONF_modules_free()
      * which also invokes CONF_modules_finish()?
      */
@@ -384,13 +384,13 @@ static ENGINE *ssl_try_load_engine(const char *engine)
 static apr_status_t ssl_thread_cleanup(void *data)
 {
     UNREFERENCED(data);
-    CRYPTO_set_locking_callback(NULL);
+    crypto_methods.CRYPTO_set_locking_callback(NULL);
 #if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
-    CRYPTO_set_id_callback(NULL);
+    crypto_methods.CRYPTO_set_id_callback(NULL);
 #endif
-    CRYPTO_set_dynlock_create_callback(NULL);
-    CRYPTO_set_dynlock_lock_callback(NULL);
-    CRYPTO_set_dynlock_destroy_callback(NULL);
+    crypto_methods.CRYPTO_set_dynlock_create_callback(NULL);
+    crypto_methods.CRYPTO_set_dynlock_lock_callback(NULL);
+    crypto_methods.CRYPTO_set_dynlock_destroy_callback(NULL);
 
     /* Let the registered mutex cleanups do their own thing
      */
@@ -417,17 +417,17 @@ static int ssl_rand_make(const char *file, int len, int base64)
     int num = len;
     BIO *out = NULL;
 
-    out = BIO_new(BIO_s_file());
+    out = crypto_methods.BIO_new(crypto_methods.BIO_s_file());
     if (out == NULL)
         return 0;
-    if ((r = BIO_write_filename(out, (char *)file)) < 0) {
-        BIO_free_all(out);
+    if ((r = crypto_methods.BIO_write_filename(out, (char *)file)) < 0) {
+        crypto_methods.BIO_free_all(out);
         return 0;
     }
     if (base64) {
-        BIO *b64 = BIO_new(BIO_f_base64());
+        BIO *b64 = crypto_methods.BIO_new(BIO_f_base64());
         if (b64 == NULL) {
-            BIO_free_all(out);
+            crypto_methods.BIO_free_all(out);
             return 0;
         }
         out = BIO_push(b64, out);
@@ -439,14 +439,14 @@ static int ssl_rand_make(const char *file, int len, int base64)
             len = sizeof(buf);
         r = RAND_bytes(buf, len);
         if (r <= 0) {
-            BIO_free_all(out);
+            crypto_methods.BIO_free_all(out);
             return 0;
         }
-        BIO_write(out, buf, len);
+        crypto_methods.BIO_write(out, buf, len);
         num -= len;
     }
     r = BIO_flush(out);
-    BIO_free_all(out);
+    crypto_methods.BIO_free_all(out);
     return r > 0 ? 1 : 0;
 }
 
@@ -473,12 +473,12 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 #else
     OPENSSL_malloc_init();
 #endif
-    ERR_load_crypto_strings();
+    crypto_methods.ERR_load_crypto_strings();
     ssl_methods.SSL_CTX_load_error_strings();
     ssl_methods.SSL_CTX_library_init();
     crypto_methods.OPENSSL_add_all_algorithms_noconf();
 #if HAVE_ENGINE_LOAD_BUILTIN_ENGINES
-    ENGINE_load_builtin_engines();
+    crypto_methods.ENGINE_load_builtin_engines();
 #endif
     crypto_methdos.OPENSSL_load_builtin_modules();
 
@@ -581,12 +581,12 @@ TCN_IMPLEMENT_CALL(jint, SSL, fipsModeSet)(TCN_STDARGS, jint mode)
 #ifdef OPENSSL_FIPS
     if(1 != (r = (jint)FIPS_mode_set((int)mode))) {
       /* arrange to get a human-readable error message */
-      unsigned long err = ERR_get_error();
+      unsigned long err = crypto_methods.ERR_get_error();
       char msg[256];
 
       /* ERR_load_crypto_strings() already called in initialize() */
 
-      ERR_error_string_n(err, msg, 256);
+      crypto_methods.ERR_error_string_n(err, msg, 256);
 
       throwIllegalStateException(e, msg);
     }
@@ -610,7 +610,7 @@ static apr_status_t generic_bio_cleanup(void *data)
     BIO *b = (BIO *)data;
 
     if (b) {
-        BIO_free(b);
+        crypto_methods.BIO_free(b);
     }
     return APR_SUCCESS;
 }
@@ -620,7 +620,7 @@ void SSL_BIO_close(BIO *bi)
     if (bi == NULL)
         return;
     else
-        BIO_free(bi);
+        crypto_methods.BIO_free(bi);
 }
 
 void SSL_BIO_doref(BIO *bi)
@@ -807,7 +807,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getLastError)(TCN_STDARGS)
 {
     char buf[256];
     UNREFERENCED(o);
-    ERR_error_string(ERR_get_error(), buf);
+    crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), buf);
     return tcn_new_string(e, buf);
 }
 
@@ -819,7 +819,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, hasOp)(TCN_STDARGS, jint op)
 /*** Begin Twitter 1:1 API addition ***/
 TCN_IMPLEMENT_CALL(jint, SSL, getLastErrorNumber)(TCN_STDARGS) {
     UNREFERENCED_STDARGS;
-    return ERR_get_error();
+    return crypto_methods.ERR_get_error();
 }
 
 static void ssl_info_callback(const SSL *ssl, int where, int ret) {
@@ -885,7 +885,7 @@ TCN_IMPLEMENT_CALL(jint /* nbytes */, SSL, pendingWrittenBytesInBIO)(TCN_STDARGS
                                                                      jlong bio /* BIO * */) {
     UNREFERENCED_STDARGS;
 
-    return BIO_ctrl_pending(J2P(bio, BIO *));
+    return crypto_methods.BIO_ctrl_pending(J2P(bio, BIO *));
 }
 
 /* How much is available for reading in the given SSL struct? */
@@ -902,7 +902,7 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, writeToBIO)(TCN_STDARGS,
                                                        jint wlen /* sizeof(wbuf) */) {
     UNREFERENCED_STDARGS;
 
-    return BIO_write(J2P(bio, BIO *), J2P(wbuf, void *), wlen);
+    return crypto_methods.BIO_write(J2P(bio, BIO *), J2P(wbuf, void *), wlen);
 
 }
 
@@ -913,7 +913,7 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, readFromBIO)(TCN_STDARGS,
                                                         jint rlen /* sizeof(rbuf) - 1 */) {
     UNREFERENCED_STDARGS;
 
-    return BIO_read(J2P(bio, BIO *), J2P(rbuf, void *), rlen);
+    return crypto_methods.BIO_read(J2P(bio, BIO *), J2P(rbuf, void *), rlen);
 }
 
 /* Write up to wlen bytes of application data to the ssl BIO (encrypt) */
@@ -981,7 +981,7 @@ TCN_IMPLEMENT_CALL(jlong, SSL, makeNetworkBIO)(TCN_STDARGS,
         goto fail;
     }
 
-    if (BIO_new_bio_pair(&internal_bio, 0, &network_bio, 0) != 1) {
+    if (crypto_methods.BIO_new_bio_pair(&internal_bio, 0, &network_bio, 0) != 1) {
         throwIllegalStateException(e, "BIO_new_bio_pair failed");
         goto fail;
     }
@@ -1000,7 +1000,7 @@ TCN_IMPLEMENT_CALL(void, SSL, freeBIO)(TCN_STDARGS,
     UNREFERENCED_STDARGS;
 
     bio_ = J2P(bio, BIO *);
-    BIO_free(bio_);
+    crypto_methods.BIO_free(bio_);
 }
 
 /* Send CLOSE_NOTIFY to peer */
@@ -1147,7 +1147,7 @@ TCN_IMPLEMENT_CALL(jobjectArray, SSL, getPeerCertChain)(TCN_STDARGS,
         cert = (X509*) sk_X509_value(sk, i);
 
         buf = NULL;
-        length = i2d_X509(cert, &buf);
+        length = crypto_methods.i2d_X509(cert, &buf);
         if (length < 0) {
             // TODO dynload
             OPENSSL_free(buf);
@@ -1192,7 +1192,7 @@ TCN_IMPLEMENT_CALL(jbyteArray, SSL, getPeerCertificate)(TCN_STDARGS,
         return NULL;
     }
 
-    length = i2d_X509(cert, &buf);
+    length = crypto_methods.i2d_X509(cert, &buf);
 
     bArray = (*e)->NewByteArray(e, length);
     (*e)->SetByteArrayRegion(e, bArray, 0, length, (jbyte*) buf);
@@ -1202,7 +1202,7 @@ TCN_IMPLEMENT_CALL(jbyteArray, SSL, getPeerCertificate)(TCN_STDARGS,
      * session is freed.
      * See https://www.openssl.org/docs/ssl/SSL_get_peer_certificate.html
      */
-    X509_free(cert);
+    crypto_methods.X509_free(cert);
 
     OPENSSL_free(buf);
 
@@ -1213,7 +1213,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, getErrorString)(TCN_STDARGS, jlong number)
 {
     char buf[256];
     UNREFERENCED(o);
-    ERR_error_string(number, buf);
+    crypto_methods.ERR_error_string(number, buf);
     return tcn_new_string(e, buf);
 }
 
@@ -1273,7 +1273,7 @@ TCN_IMPLEMENT_CALL(void, SSL, setVerify)(TCN_STDARGS, jlong ssl,
     if (!c->store) {
         if (ssl_methods.SSL_CTX_set_default_verify_paths(c->ctx)) {
             c->store = ssl_methods.SSL_CTX_get_cert_store(c->ctx);
-            X509_STORE_set_flags(c->store, 0);
+            crypto_methods.X509_STORE_set_flags(c->store, 0);
         }
         else {
             /* XXX: See if this is fatal */
@@ -1379,7 +1379,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSL, setCipherSuites)(TCN_STDARGS, jlong ssl,
     }
     if (!ssl_methods.SSL_set_cipher_list(ssl_, J2S(ciphers))) {
         char err[256];
-        ERR_error_string(ERR_get_error(), err);
+        crypto_methods.ERR_error_string(crypto_methods.ERR_get_error(), err);
         throwIllegalStateException(e, err);
         rv = JNI_FALSE;
     }

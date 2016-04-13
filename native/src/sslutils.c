@@ -185,10 +185,10 @@ DH *SSL_dh_GetParamFromFile(const char *file)
     DH *dh = NULL;
     BIO *bio;
 
-    if ((bio = BIO_new_file(file, "r")) == NULL)
+    if ((bio = crypto_methods.BIO_new_file(file, "r")) == NULL)
         return NULL;
     dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
-    BIO_free(bio);
+    crypto_methods.BIO_free(bio);
     return dh;
 }
 
@@ -198,10 +198,10 @@ EC_GROUP *SSL_ec_GetParamFromFile(const char *file)
     EC_GROUP *group = NULL;
     BIO *bio;
 
-    if ((bio = BIO_new_file(file, "r")) == NULL)
+    if ((bio = crypto_methods.BIO_new_file(file, "r")) == NULL)
         return NULL;
     group = PEM_read_bio_ECPKParameters(bio, NULL, NULL, NULL);
-    BIO_free(bio);
+    crypto_methods.BIO_free(bio);
     return (group);
 }
 #endif
@@ -213,7 +213,7 @@ DH *SSL_callback_tmp_DH(SSL *ssl, int export, int keylen)
 {
     EVP_PKEY *pkey = ssl_methods.SSL_get_privatekey(ssl);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-    int type = pkey != NULL ? EVP_PKEY_type(pkey->type) : EVP_PKEY_NONE;
+    int type = pkey != NULL ? crypto_methods.EVP_PKEY_type(pkey->type) : EVP_PKEY_NONE;
 #else
     int type = pkey != NULL ? EVP_PKEY_base_id(pkey) : EVP_PKEY_NONE;
 #endif
@@ -231,7 +231,7 @@ DH *SSL_callback_tmp_DH(SSL *ssl, int export, int keylen)
      * callback).
      */
     if ((type == EVP_PKEY_RSA) || (type == EVP_PKEY_DSA)) {
-        keylen = EVP_PKEY_bits(pkey);
+        keylen = crypto_methods.EVP_PKEY_bits(pkey);
     }
     // TODO dynload
     return SSL_get_dh_params(keylen);
@@ -251,22 +251,22 @@ int SSL_CTX_use_certificate_chain(SSL_CTX *ctx, const char *file,
     int n;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-    if ((bio = BIO_new(BIO_s_file_internal())) == NULL)
+    if ((bio = crypto_methods.BIO_new(crypto_methods.BIO_s_file_internal())) == NULL)
 #else
-    if ((bio = BIO_new(BIO_s_file())) == NULL)
+    if ((bio = crypto_methods.BIO_new(crypto_methods.BIO_s_file())) == NULL)
 #endif
         return -1;
-    if (BIO_read_filename(bio, file) <= 0) {
-        BIO_free(bio);
+    if (crypto_methods.BIO_read_filename(bio, file) <= 0) {
+        crypto_methods.BIO_free(bio);
         return -1;
     }
     /* optionally skip a leading server certificate */
     if (skipfirst) {
         if ((x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL)) == NULL) {
-            BIO_free(bio);
+            crypto_methods.BIO_free(bio);
             return -1;
         }
-        X509_free(x509);
+        crypto_methods.X509_free(x509);
     }
 
     /* free a perhaps already configured extra chain */
@@ -276,8 +276,8 @@ int SSL_CTX_use_certificate_chain(SSL_CTX *ctx, const char *file,
     n = 0;
     while ((x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL)) != NULL) {
         if (!ssl_methods.SSL_CTX_add_extra_chain_cert(ctx, x509)) {
-            X509_free(x509);
-            BIO_free(bio);
+            crypto_methods.X509_free(x509);
+            crypto_methods.BIO_free(bio);
             return -1;
         }
         n++;
@@ -286,12 +286,12 @@ int SSL_CTX_use_certificate_chain(SSL_CTX *ctx, const char *file,
     if ((err = ERR_peek_error()) > 0) {
         if (!(   ERR_GET_LIB(err) == ERR_LIB_PEM
               && ERR_GET_REASON(err) == PEM_R_NO_START_LINE)) {
-            BIO_free(bio);
+            crypto_methods.BIO_free(bio);
             return -1;
         }
-        while (ERR_get_error() > 0) ;
+        while (crypto_methods.ERR_get_error() > 0) ;
     }
-    BIO_free(bio);
+    crypto_methods.BIO_free(bio);
     return n;
 }
 
@@ -301,9 +301,9 @@ static int ssl_X509_STORE_lookup(X509_STORE *store, int yype,
     X509_STORE_CTX ctx;
     int rc;
 
-    X509_STORE_CTX_init(&ctx, store, NULL, NULL);
-    rc = X509_STORE_get_by_subject(&ctx, yype, name, obj);
-    X509_STORE_CTX_cleanup(&ctx);
+    crypto_methods.X509_STORE_CTX_init(&ctx, store, NULL, NULL);
+    rc = crypto_methods.X509_STORE_get_by_subject(&ctx, yype, name, obj);
+    crypto_methods.X509_STORE_CTX_cleanup(&ctx);
     return rc;
 }
 
@@ -319,9 +319,9 @@ static int ssl_verify_CRL(int ok, X509_STORE_CTX *ctx, tcn_ssl_conn_t *con)
     /*
      * Determine certificate ingredients in advance
      */
-    cert    = X509_STORE_CTX_get_current_cert(ctx);
-    subject = X509_get_subject_name(cert);
-    issuer  = X509_get_issuer_name(cert);
+    cert    = crypto_methods.X509_STORE_CTX_get_current_cert(ctx);
+    subject = crypto_methods.X509_get_subject_name(cert);
+    issuer  = crypto_methods.X509_get_issuer_name(cert);
 
     /*
      * OpenSSL provides the general mechanism to deal with CRLs but does not
@@ -371,41 +371,41 @@ static int ssl_verify_CRL(int ok, X509_STORE_CTX *ctx, tcn_ssl_conn_t *con)
         /*
          * Verify the signature on this CRL
          */
-        pubkey = X509_get_pubkey(cert);
-        rc = X509_CRL_verify(crl, pubkey);
+        pubkey = crypto_methods.X509_get_pubkey(cert);
+        rc = crypto_methods.X509_CRL_verify(crl, pubkey);
         /* Only refcounted in OpenSSL */
         if (pubkey)
-            EVP_PKEY_free(pubkey);
+            crypto_methods.EVP_PKEY_free(pubkey);
         if (rc <= 0) {
             /* TODO: Log Invalid signature on CRL */
-            X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
-            X509_OBJECT_free_contents(&obj);
+            crypto_methods.X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
+            crypto_methods.X509_OBJECT_free_contents(&obj);
             return 0;
         }
 
         /*
          * Check date of CRL to make sure it's not expired
          */
-        i = X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
+        i = crypto_methods.X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
 
         if (i == 0) {
             /* TODO: Log Found CRL has invalid nextUpdate field */
 
-            X509_STORE_CTX_set_error(ctx,
+            crypto_methods.X509_STORE_CTX_set_error(ctx,
                                      X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD);
-            X509_OBJECT_free_contents(&obj);
+            crypto_methods.X509_OBJECT_free_contents(&obj);
             return 0;
         }
 
         if (i < 0) {
             /* TODO: Log Found CRL is expired */
-            X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_HAS_EXPIRED);
-            X509_OBJECT_free_contents(&obj);
+            crypto_methods.X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_HAS_EXPIRED);
+            crypto_methods.X509_OBJECT_free_contents(&obj);
 
             return 0;
         }
 
-        X509_OBJECT_free_contents(&obj);
+        crypto_methods.X509_OBJECT_free_contents(&obj);
     }
 
     /*
@@ -433,15 +433,15 @@ static int ssl_verify_CRL(int ok, X509_STORE_CTX *ctx, tcn_ssl_conn_t *con)
             ASN1_INTEGER *sn = X509_REVOKED_get0_serialNumber(revoked);
 #endif
 
-            if (!ASN1_INTEGER_cmp(sn, X509_get_serialNumber(cert))) {
-                X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_REVOKED);
-                X509_OBJECT_free_contents(&obj);
+            if (!crypto_methods.ASN1_INTEGER_cmp(sn, crypto_methods.X509_get_serialNumber(cert))) {
+                crypto_methods.X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_REVOKED);
+                crypto_methods.X509_OBJECT_free_contents(&obj);
 
                 return 0;
             }
         }
 
-        X509_OBJECT_free_contents(&obj);
+        crypto_methods.X509_OBJECT_free_contents(&obj);
     }
 
     return ok;
@@ -456,12 +456,12 @@ static int ssl_verify_CRL(int ok, X509_STORE_CTX *ctx, tcn_ssl_conn_t *con)
 int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
 {
    /* Get Apache context back through OpenSSL context */
-    SSL *ssl = X509_STORE_CTX_get_ex_data(ctx,
+    SSL *ssl = crypto_methods.X509_STORE_CTX_get_ex_data(ctx,
                                           ssl_methods.SSL_get_ex_data_X509_STORE_CTX_idx());
     tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_app_data(ssl);
     /* Get verify ingredients */
-    int errnum   = X509_STORE_CTX_get_error(ctx);
-    int errdepth = X509_STORE_CTX_get_error_depth(ctx);
+    int errnum   = crypto_methods.X509_STORE_CTX_get_error(ctx);
+    int errdepth = crypto_methods.X509_STORE_CTX_get_error_depth(ctx);
     int verify   = con->ctx->verify_mode;
     int depth    = con->ctx->verify_depth;
     int skip_crl = 0;
@@ -484,7 +484,7 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
          * missing/untrusted.  Fail in that case.
          */
         if (SSL_VERIFY_ERROR_IS_OPTIONAL(errnum)) {
-            X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
+            crypto_methods.X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
             errnum = X509_V_ERR_APPLICATION_VERIFICATION;
             ok = 0;
         }
@@ -497,7 +497,7 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
             }
             else if (ocsp_response == OCSP_STATUS_REVOKED) {
                 ok = 0 ;
-                errnum = X509_STORE_CTX_get_error(ctx);
+                errnum = crypto_methods.X509_STORE_CTX_get_error(ctx);
             }
             else if (ocsp_response == OCSP_STATUS_UNKNOWN) {
                 /* TODO: do nothing for time being, continue with CRL */
@@ -511,7 +511,7 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
      */
     if (ok && con->ctx->crl && !skip_crl) {
         if (!(ok = ssl_verify_CRL(ok, ctx, con))) {
-            errnum = X509_STORE_CTX_get_error(ctx);
+            errnum = crypto_methods.X509_STORE_CTX_get_error(ctx);
             /* TODO: Log something */
         }
     }
@@ -523,7 +523,7 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
          * Certificate Verification: Error
          */
         if (con->peer) {
-            X509_free(con->peer);
+            crypto_methods.X509_free(con->peer);
             con->peer = NULL;
         }
     }
