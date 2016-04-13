@@ -474,8 +474,8 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     OPENSSL_malloc_init();
 #endif
     crypto_methods.ERR_load_crypto_strings();
-    ssl_methods.SSL_CTX_load_error_strings();
-    ssl_methods.SSL_CTX_library_init();
+    ssl_methods.SSL_load_error_strings();
+    ssl_methods.SSL_library_init();
     crypto_methods.OPENSSL_add_all_algorithms_noconf();
 #if HAVE_ENGINE_LOAD_BUILTIN_ENGINES
     crypto_methods.ENGINE_load_builtin_engines();
@@ -956,7 +956,7 @@ TCN_IMPLEMENT_CALL(void, SSL, freeSSL)(TCN_STDARGS,
         free(handshakeCount);
     }
 
-    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl_, 0);
+    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)ssl_methods.SSL_get_ex_data(ssl_, 0);
     if(con->alpn_selection_callback != NULL) {
         (*e)->DeleteGlobalRef(e, con->alpn_selection_callback);
     }
@@ -1465,7 +1465,7 @@ TCN_IMPLEMENT_CALL(void, SSL, invalidateSession)(TCN_STDARGS, jlong ses) {
         throwIllegalArgumentException(e, "ssl is null");
         return;
     }
-    SSL_SESSION_free(session);
+    ssl_methods.SSL_SESSION_free(session);
 }
 
 TCN_IMPLEMENT_CALL(jint, SSL, getHandshakeCount)(TCN_STDARGS, jlong ssl)

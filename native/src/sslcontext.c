@@ -91,35 +91,35 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     if (protocol == SSL_PROTOCOL_TLSV1_2) {
 #ifdef HAVE_TLSV1_2
         if (mode == SSL_MODE_CLIENT)
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_2_client_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_2_client_method());
         else if (mode == SSL_MODE_SERVER)
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_2_server_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_2_server_method());
         else
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_2_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_2_method());
 #endif
     } else if (protocol == SSL_PROTOCOL_TLSV1_1) {
 #ifdef HAVE_TLSV1_1
         if (mode == SSL_MODE_CLIENT)
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_1_client_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_1_client_method());
         else if (mode == SSL_MODE_SERVER)
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_1_server_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_1_server_method());
         else
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_1_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_1_method());
 #endif
     } else if (protocol == SSL_PROTOCOL_TLSV1) {
         if (mode == SSL_MODE_CLIENT)
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_client_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_client_method());
         else if (mode == SSL_MODE_SERVER)
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_server_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_server_method());
         else
-            ctx = ssl_methods.SSL_CTX_new(TLSv1_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLSv1_method());
     } else if (protocol == SSL_PROTOCOL_SSLV3) {
         if (mode == SSL_MODE_CLIENT)
-            ctx = ssl_methods.SSL_CTX_new(SSLv3_client_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.SSLv3_client_method());
         else if (mode == SSL_MODE_SERVER)
-            ctx = ssl_methods.SSL_CTX_new(SSLv3_server_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.SSLv3_server_method());
         else
-            ctx = ssl_methods.SSL_CTX_new(SSLv3_method());
+            ctx = ssl_methods.SSL_CTX_new(ssl_methods.SSLv3_method());
     } else if (protocol == SSL_PROTOCOL_SSLV2) {
         /* requested but not supported */
 #ifndef HAVE_TLSV1_2
@@ -133,18 +133,18 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     } else {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
         if (mode == SSL_MODE_CLIENT)
-                ctx = ssl_methods.SSL_CTX_new(SSLv23_client_method());
+                ctx = ssl_methods.SSL_CTX_new(ssl_methods.SSLv23_client_method());
         else if (mode == SSL_MODE_SERVER)
-                ctx = ssl_methods.SSL_CTX_new(SSLv23_server_method());
+                ctx = ssl_methods.SSL_CTX_new(ssl_methods.SSLv23_server_method());
         else
-                ctx = ssl_methods.SSL_CTX_new(SSLv23_method());
+                ctx = ssl_methods.SSL_CTX_new(ssl_methods.SSLv23_method());
 #else
         if (mode == SSL_MODE_CLIENT)
-                ctx = ssl_methods.SSL_CTX_new(TLS_client_method());
+                ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLS_client_method());
         else if (mode == SSL_MODE_SERVER)
-                ctx = ssl_methods.SSL_CTX_new(TLS_server_method());
+                ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLS_server_method());
         else
-                ctx = ssl_methods.SSL_CTX_new(TLS_method());
+                ctx = ssl_methods.SSL_CTX_new(ssl_methods.TLS_method());
 #endif
     }
 
