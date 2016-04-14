@@ -216,6 +216,11 @@ static const jint supported_ssl_opts = 0
 #endif
      | 0;
 
+
+/* containers for libssl/libcrypto functions */
+ssl_dynamic_methods ssl_methods;
+crypto_dynamic_methods crypto_methods;
+
 /*
  * Grab well-defined DH parameters from OpenSSL, see the get_rfc*
  * functions in <openssl/bn.h> for all available primes.
