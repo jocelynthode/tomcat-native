@@ -136,7 +136,7 @@ if $use_openssl ; then
   TCN_CHECK_SSL_TOOLKIT
 fi
 
-lib_target=''
+lib_target='-rpath $(libdir) $(OBJECTS)'
 AC_SUBST(lib_target)
 
 TCNATIVE_LIBNAME="tcnative${libsuffix}"
