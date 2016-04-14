@@ -17,16 +17,6 @@
 #ifndef TCN_API_H
 #define TCN_API_H
 
-#include "apr.h"
-#include "apr_general.h"
-#include "apr_pools.h"
-#include "apr_portable.h"
-#include "apr_network_io.h"
-#include "apr_strings.h"
-
-#ifndef APR_HAS_THREADS
-#error "Missing APR_HAS_THREADS support from APR."
-#endif
 #include <jni.h>
 
 /**
@@ -48,5 +38,18 @@ jint tcn_get_java_env(JNIEnv **);
 #ifdef __cplusplus
 }
 #endif
+
+/* Temporary define APR types */
+
+#define APR_SUCCESS 0
+// WRONG value:
+#define APR_ENOTIMPL -1
+
+#define APR_STRINGIFY(n) APR_STRINGIFY_HELPER(n)
+#define APR_STRINGIFY_HELPER(n) #n
+
+
+typedef int apr_status_t;
+
 
 #endif /* TCN_API_H */

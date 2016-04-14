@@ -175,29 +175,8 @@ TCN_IMPLEMENT_CALL(jstring, Library, versionString)(TCN_STDARGS)
 //TODO: Remove or import some of this ?
 TCN_IMPLEMENT_CALL(jint, Library, size)(TCN_STDARGS, jint what)
 {
-
     UNREFERENCED_STDARGS;
-
-    switch (what) {
-        case 1:
-            return APR_SIZEOF_VOIDP;
-        break;
-        case 2:
-            return APR_PATH_MAX;
-        break;
-        case 3:
-            return APRMAXHOSTLEN;
-        break;
-        case 4:
-            return APR_MAX_IOVEC_SIZE;
-        break;
-        case 5:
-            return APR_MAX_SECS_TO_LINGER;
-        break;
-
 // TODO: Throw exception if no match ? We removed cases that may still be used.
-
-    }
     return 0;
 }
 

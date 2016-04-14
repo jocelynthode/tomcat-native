@@ -17,7 +17,6 @@
 #ifndef TCN_VERSION_H
 #define TCN_VERSION_H
 
-#include "apr_version.h"
 
 #include "tcn.h"
 
