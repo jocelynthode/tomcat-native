@@ -491,5 +491,8 @@ typedef struct {
     void (*ENGINE_load_builtin_engines)(void);
 } crypto_dynamic_methods;
 
+/* actual containers for libssl/libcrypto functions */
+extern ssl_dynamic_methods ssl_methods;
+extern crypto_dynamic_methods crypto_methods;
 
 #endif /* SSL_PRIVATE_H */

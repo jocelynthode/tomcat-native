@@ -27,10 +27,6 @@ static jclass byteArrayClass;
 static jclass    ssl_context_class;
 static jmethodID sni_java_callback;
 
-/* containers for libssl/libcrypto functions */
-extern ssl_dynamic_methods ssl_methods;
-extern crypto_dynamic_methods crypto_methods;
-
 /* Callback used when OpenSSL receives a client hello with a Server Name
  * Indication extension.
  */
