@@ -75,7 +75,7 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 }
 
 /* Initialize server context */
-/* TODO: Take from ssl.c in ssl-experiments *&
+/* TODO: Take from ssl.c in ssl-experiments */
 TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
                                             jint protocol, jint mode)
 {
