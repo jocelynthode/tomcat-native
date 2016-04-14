@@ -867,37 +867,38 @@ cleanup:
 }
 
 //TODO: Import array header and APR_ARRAY_IDX ?
-static int ssl_array_index(apr_array_header_t *array,
-                           const char *s)
-{
-    int i;
-    for (i = 0; i < array->nelts; i++) {
-        const char *p = APR_ARRAY_IDX(array, i, const char*);
-        if (!strcmp(p, s)) {
-            return i;
-        }
-    }
-    return -1;
-}
+//static int ssl_array_index(apr_array_header_t *array,
+//                           const char *s)
+//{
+//    int i;
+//    for (i = 0; i < array->nelts; i++) {
+//        const char *p = APR_ARRAY_IDX(array, i, const char*);
+//        if (!strcmp(p, s)) {
+//            return i;
+//        }
+//    }
+//    return -1;
+//}
 
-static int ssl_cmp_alpn_protos(apr_array_header_t *array,
-                               const char *proto1,
-                               const char *proto2)
-{
-    int index1 = ssl_array_index(array, proto1);
-    int index2 = ssl_array_index(array, proto2);
-    if (index2 > index1) {
-        return (index1 >= 0)? 1 : -1;
-    }
-    else if (index1 > index2) {
-        return (index2 >= 0)? -1 : 1;
-    }
-
-    /* Both have the same index (-1 so neither listed by cient) compare
-     * the names so that spdy3 gets precedence over spdy2. That makes
-     * the outcome at least deterministic. */
-    return strcmp((const char *)proto1, (const char *)proto2);
-}
+/* TODO: Implement without apr */
+//static int ssl_cmp_alpn_protos(apr_array_header_t *array,
+//                               const char *proto1,
+//                               const char *proto2)
+//{
+//    int index1 = ssl_array_index(array, proto1);
+//    int index2 = ssl_array_index(array, proto2);
+//    if (index2 > index1) {
+//        return (index1 >= 0)? 1 : -1;
+//    }
+//    else if (index1 > index2) {
+//        return (index2 >= 0)? -1 : 1;
+//    }
+//
+//    /* Both have the same index (-1 so neither listed by cient) compare
+//     * the names so that spdy3 gets precedence over spdy2. That makes
+//     * the outcome at least deterministic. */
+//    return strcmp((const char *)proto1, (const char *)proto2);
+//}
 
 /*
  * This callback function is executed when the TLS Application Layer
