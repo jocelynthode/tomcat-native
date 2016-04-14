@@ -20,7 +20,6 @@
 #include "tcn.h"
 
 #ifdef HAVE_OPENSSL
-#include "apr_poll.h"
 #include "ssl_private.h"
 
 #ifdef WIN32
