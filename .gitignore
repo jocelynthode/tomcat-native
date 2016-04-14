@@ -19,5 +19,6 @@ install.sh
 /native/*.spec
 /native/configure
 /native/Makefile
+/native/build/ltmain.sh
 !/native/build/tcnative.m4
 
