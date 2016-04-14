@@ -132,7 +132,7 @@ jint throwIllegalArgumentException( JNIEnv *env, char *message )
 
 void tcn_Throw(JNIEnv *env, char *fmt, ...) {
     throwIllegalStateException(env, fmt);
-//TODO
+/* TODO */
 /*
     char msg[8124] = {'\0'};
     va_list ap;
@@ -172,11 +172,11 @@ TCN_IMPLEMENT_CALL(jstring, Library, versionString)(TCN_STDARGS)
 }
 
 
-//TODO: Remove or import some of this ?
+/* TODO: Remove or import some of this ? */
 TCN_IMPLEMENT_CALL(jint, Library, size)(TCN_STDARGS, jint what)
 {
     UNREFERENCED_STDARGS;
-// TODO: Throw exception if no match ? We removed cases that may still be used.
+/* TODO: Throw exception if no match ? We removed cases that may still be used. */
     return 0;
 }
 

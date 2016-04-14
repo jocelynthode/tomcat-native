@@ -75,7 +75,7 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 }
 
 /* Initialize server context */
-//TODO: Take from ssl.c in ssl-experiments
+/* TODO: Take from ssl.c in ssl-experiments *&
 TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
                                             jint protocol, jint mode)
 {
@@ -186,7 +186,7 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
      * Configure additional context ingredients
      */
     SSL_CTX_set_options(c->ctx, SSL_OP_SINGLE_DH_USE);
-//TODO: what do we do with these defines?
+/* TODO: what do we do with these defines? */
 #ifdef HAVE_ECC
     SSL_CTX_set_options(c->ctx, SSL_OP_SINGLE_ECDH_USE);
 #endif
@@ -229,10 +229,11 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
     c->shutdown_type = SSL_SHUTDOWN_TYPE_UNSET;
 
     /* Set default password callback */
-    //TODO: fixme, do we need to support these callbacks?
-    //SSL_CTX_set_default_passwd_cb(c->ctx, (pem_password_cb *)SSL_password_callback);
-    //SSL_CTX_set_default_passwd_cb_userdata(c->ctx, (void *)(&tcn_password_callback));
-    //ssl_methods.SSL_CTX_set_info_callback(c->ctx, SSL_callback_handshake);
+    /* TODO: fixme, do we need to support these callbacks?
+    SSL_CTX_set_default_passwd_cb(c->ctx, (pem_password_cb *)SSL_password_callback);
+    SSL_CTX_set_default_passwd_cb_userdata(c->ctx, (void *)(&tcn_password_callback));
+    ssl_methods.SSL_CTX_set_info_callback(c->ctx, SSL_callback_handshake);
+    */
 
     /* Cache Java side SNI callback if not already cached */
     if (ssl_context_class == NULL) {
@@ -668,7 +669,7 @@ cleanup:
     return rc;
 }
 
-//TODO: straight copy from ssl-experiments but maybe not a good idea
+/* TODO: straight copy from ssl-experiments but maybe not a good idea */
 TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS,jlong ctx,
                                                        jbyteArray javaCert,
                                                        jbyteArray javaKey, jint idx)
@@ -744,7 +745,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificate)(TCN_STDARGS,jlong ctx,
         rv = JNI_FALSE;
         goto cleanup;
     }
-    //TODO: read DH and ECC params?
+    /* TODO: read DH and ECC params? */
 
 cleanup:
     free(key);
@@ -916,7 +917,7 @@ int cb_server_alpn(SSL *ssl,
                    const unsigned char **out, unsigned char *outlen,
                    const unsigned char *in, unsigned int inlen, void *arg)
 {
-    // TODO: Support ALPN without using APR
+    /* TODO: Support ALPN without using APR */
     return SSL_TLSEXT_ERR_ALERT_FATAL;
 //    tcn_ssl_ctxt_t *tcsslctx = (tcn_ssl_ctxt_t *)arg;
 //    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_app_data(ssl);

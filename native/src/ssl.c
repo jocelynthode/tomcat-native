@@ -70,7 +70,7 @@ static jmethodID sessionInit;
 static jmethodID sessionRemove;
 
 
-/* Dynamic lock structure */ //TODO also in threads.c
+/* Dynamic lock structure */ /* TODO also in threads.c  */
 struct CRYPTO_dynlock_value {
     const char* file;
     int line;
@@ -388,7 +388,7 @@ static ENGINE *ssl_try_load_engine(const char *engine)
 }
 #endif
 
-//TODO: Rewrite
+/* TODO: Rewrite */
 static apr_status_t ssl_thread_cleanup(void *data)
 {
     UNREFERENCED(data);
@@ -405,7 +405,7 @@ static apr_status_t ssl_thread_cleanup(void *data)
     return APR_SUCCESS;
 }
 
- //TODO: Rewrite
+/* TODO: Rewrite */
 static int ssl_rand_choosenum(int l, int h)
 {
     int i;
@@ -458,7 +458,7 @@ static int ssl_rand_make(const char *file, int len, int base64)
     return r > 0 ? 1 : 0;
 }
 
- //TODO: Check method in ssl.c in ssl-experiments to see if we can take it and change dynamic to static
+ /*TODO: Check method in ssl.c in ssl-experiments to see if we can take it and change dynamic to static */
 TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
     jclass clazz;
@@ -466,7 +466,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 
     TCN_ALLOC_CSTRING(engine);
 
-    UNREFERENCED(o); //TODO: Remove ?
+    UNREFERENCED(o);
     /* Check if already initialized */
     if (ssl_initialized++) {
         TCN_FREE_CSTRING(engine);
@@ -493,7 +493,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* Initialize thread support */
     ssl_thread_setup();
 
- //TODO: Remove exceptions and take CONSTANTS and is it necessary ?
+ /* TODO: Remove exceptions and take CONSTANTS and is it necessary ? */
     if (J2S(engine)) {
         ENGINE *ee = NULL;
         apr_status_t err = APR_SUCCESS;
@@ -529,15 +529,14 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* For SSL_get_app_data2() and SSL_get_app_data3() at request time */
     SSL_init_app_data2_3_idx();
 
-    //TODO: Keep it ?
     memset(&tcn_password_callback, 0, sizeof(tcn_pass_cb_t));
 
     init_dh_params();
-    //TODO END
+    /* TODO END */
     /*
      * Let us cleanup the ssl library when the library is unloaded
      */
-      //TODO: Rewrite so that it gets executed when SSL is freed
+      /* TODO: Rewrite so that it gets executed when SSL is freed */
     /*apr_pool_cleanup_register(tcn_global_pool, NULL,
                               ssl_init_cleanup,
                               apr_pool_cleanup_null);
@@ -552,7 +551,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     sClazz = (*e)->FindClass(e, "java/lang/String");
     stringClass = (jclass) (*e)->NewGlobalRef(e, sClazz);
 
-    //TODO: add those ?
+    /* TODO: add those ? */
     //alpn_init(e);
     //session_init(e);
     return (jint)APR_SUCCESS;
@@ -608,14 +607,14 @@ TCN_IMPLEMENT_CALL(jint, SSL, fipsModeSet)(TCN_STDARGS, jint mode)
     return r;
 }
 
-/* OpenSSL Java Stream BIO */ //TODO: Remove all BIO ?
+/* OpenSSL Java Stream BIO */ /* TODO: Remove all BIO ? */
 
 typedef struct  {
     int            refcount;
     tcn_callback_t cb;
 } BIO_JAVA;
 
- //TODO: Change type or remove BIO ?
+ /* TODO: Change type or remove BIO ? */
 static apr_status_t generic_bio_cleanup(void *data)
 {
     BIO *b = (BIO *)data;
@@ -841,7 +840,7 @@ static void ssl_info_callback(const SSL *ssl, int where, int ret) {
     }
 }
 
- //TODO: Take from ssl.c in ssl-experiments and rewrite so that we don't use dynamic functions
+ /* TODO: Take from ssl.c in ssl-experiments and rewrite so that we don't use dynamic functions */
 TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
                                                    jlong ctx /* tcn_ssl_ctxt_t * */,
                                                    jboolean server) {

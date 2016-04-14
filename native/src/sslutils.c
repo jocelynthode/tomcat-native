@@ -489,7 +489,7 @@ int SSL_callback_SSL_verify(int ok, X509_STORE_CTX *ctx)
         }
         else {
 //            int ocsp_response = ssl_verify_OCSP(ok, ctx);
-            int ocsp_response = OCSP_STATUS_UNKNOWN; //TODO: Reimplement ssl_verify_OCSP()
+            int ocsp_response = OCSP_STATUS_UNKNOWN; /* TODO: Reimplement ssl_verify_OCSP() */
 
             if (ocsp_response == OCSP_STATUS_OK) {
                 skip_crl = 1; /* we know it is valid we skip crl evaluation */
@@ -641,9 +641,9 @@ int select_next_proto(SSL *ssl, const unsigned char **out, unsigned char *outlen
          *outlen = proto_len;
          return SSL_TLSEXT_ERR_OK;
     }
-    // TODO: OpenSSL currently not support to fail with fatal error. Once this changes we can also support it here.
-    //       Issue https://github.com/openssl/openssl/issues/188 has been created for this.
-    // Nothing matched so not select anything and just accept.
+    /* TODO: OpenSSL currently not support to fail with fatal error. Once this changes we can also support it here.
+           Issue https://github.com/openssl/openssl/issues/188 has been created for this.
+     Nothing matched so not select anything and just accept. */
     return SSL_TLSEXT_ERR_NOACK;
 }
 
