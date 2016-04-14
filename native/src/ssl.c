@@ -413,6 +413,7 @@ int load_openssl_dynamic_methods(JNIEnv *e, const char * path) {
     REQUIRE_CRYPTO_SYMBOL(BIO_ctrl_pending);
     REQUIRE_CRYPTO_SYMBOL(BIO_free);
     REQUIRE_CRYPTO_SYMBOL(BIO_new);
+    REQUIRE_CRYPTO_SYMBOL(BIO_new_file);
     REQUIRE_CRYPTO_SYMBOL(BIO_new_bio_pair);
     REQUIRE_CRYPTO_SYMBOL(BIO_printf);
     REQUIRE_CRYPTO_SYMBOL(BIO_read);
@@ -604,6 +605,24 @@ static int ssl_rand_choosenum(int l, int h)
  /*TODO: Check method in ssl.c in ssl-experiments to see if we can take it and change dynamic to static */
 TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
+    /* TODO: use openSSLPath as function argument ? */
+    /* const char * path = NULL;
+    TCN_ALLOC_CSTRING(openSSLPath);
+    if(openSSLPath != NULL) {
+        path = J2S(openSSLPath);
+    } else {
+
+    }*/
+//    char openSSLPath[] = "/usr/lib";
+
+    char path[] = "/usr/lib";
+    if(load_openssl_dynamic_methods(e, NULL) != 0) {
+        /* TCN_FREE_CSTRING(openSSLPath); */
+        throwIllegalStateException(e, "Couldn't load OpenSSL shared object");
+        return 0;
+    }
+    /* TCN_FREE_CSTRING(openSSLPath); */
+
     jclass clazz;
     jclass sClazz;
 

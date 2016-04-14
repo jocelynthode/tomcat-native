@@ -428,6 +428,7 @@ typedef struct {
     size_t (*BIO_ctrl_pending)(BIO *b);
     int (*BIO_free)(BIO *a);
     BIO *(*BIO_new)(BIO_METHOD *type);
+    BIO *(*BIO_new_file)(const char *filename, const char *mode);
     int (*BIO_new_bio_pair)(BIO **bio1, size_t writebuf1, BIO **bio2, size_t writebuf2);
     int (*BIO_printf)(BIO *bio, const char *format, ...);
     int (*BIO_read)(BIO *b, void *data, int len);
