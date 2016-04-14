@@ -45,8 +45,8 @@ jint tcn_get_java_env(JNIEnv **);
 // WRONG value:
 #define APR_ENOTIMPL -1
 
-#define APR_STRINGIFY(n) APR_STRINGIFY_HELPER(n)
-#define APR_STRINGIFY_HELPER(n) #n
+#define TCN_STRINGIFY(n) TCN_STRINGIFY_HELPER(n)
+#define TCN_STRINGIFY_HELPER(n) #n
 
 
 typedef int apr_status_t;

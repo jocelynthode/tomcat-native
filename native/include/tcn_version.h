@@ -72,11 +72,10 @@ extern "C" {
 
 
 /** The formatted string of APU's version */
-/* TODO: Remove APR_STRINGIFY ? */
 #define TCN_VERSION_STRING \
-     APR_STRINGIFY(TCN_MAJOR_VERSION) "."\
-     APR_STRINGIFY(TCN_MINOR_VERSION) "."\
-     APR_STRINGIFY(TCN_PATCH_VERSION)\
+     TCN_STRINGIFY(TCN_MAJOR_VERSION) "."\
+     TCN_STRINGIFY(TCN_MINOR_VERSION) "."\
+     TCN_STRINGIFY(TCN_PATCH_VERSION)\
      TCN_IS_DEV_STRING
 
 /** Internal: string form of the "is dev" flag */

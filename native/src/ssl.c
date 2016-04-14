@@ -70,13 +70,6 @@ static jmethodID sessionInit;
 static jmethodID sessionRemove;
 
 
-/* Dynamic lock structure */ /* TODO also in threads.c  */
-struct CRYPTO_dynlock_value {
-    const char* file;
-    int line;
-    pthread_mutex_t *mutex;
-};
-
 /*
  * supported_ssl_opts is a bitmask that contains all supported SSL_OP_*
  * options at compile-time. This is used in hasOp to determine which
@@ -388,7 +381,6 @@ static ENGINE *ssl_try_load_engine(const char *engine)
 }
 #endif
 
-/* TODO: Rewrite */
 static apr_status_t ssl_thread_cleanup(void *data)
 {
     UNREFERENCED(data);
@@ -493,7 +485,6 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* Initialize thread support */
     ssl_thread_setup();
 
- /* TODO: Remove exceptions and take CONSTANTS and is it necessary ? */
     if (J2S(engine)) {
         ENGINE *ee = NULL;
         apr_status_t err = APR_SUCCESS;
@@ -607,14 +598,13 @@ TCN_IMPLEMENT_CALL(jint, SSL, fipsModeSet)(TCN_STDARGS, jint mode)
     return r;
 }
 
-/* OpenSSL Java Stream BIO */ /* TODO: Remove all BIO ? */
+/* OpenSSL Java Stream BIO */
 
 typedef struct  {
     int            refcount;
     tcn_callback_t cb;
 } BIO_JAVA;
 
- /* TODO: Change type or remove BIO ? */
 static apr_status_t generic_bio_cleanup(void *data)
 {
     BIO *b = (BIO *)data;

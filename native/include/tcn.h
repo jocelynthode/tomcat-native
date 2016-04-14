@@ -87,9 +87,7 @@
 
 #define UNREFERENCED(P)      (P) = (P)
 #define UNREFERENCED_STDARGS (e) = (e);(o) = (o);
-/* Use "weak" to redeclare optional features */
-/* TODO: Check if needed */
-#define weak __attribute__((weak))
+
 #ifdef WIN32
 #define LLT(X) (X)
 #else
@@ -122,7 +120,6 @@ JavaVM * tcn_get_java_vm();
 jstring tcn_new_string(JNIEnv *env, const char *str);
 jstring tcn_new_stringn(JNIEnv *env, const char *str, size_t l);
 
-/* TODO: Is it the right place for that ? */
 #define TCN_MAX_METHODS 8
 
 typedef struct {

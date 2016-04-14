@@ -171,16 +171,6 @@ TCN_IMPLEMENT_CALL(jstring, Library, versionString)(TCN_STDARGS)
     return AJP_TO_JSTRING(TCN_VERSION_STRING);
 }
 
-
-/* TODO: Remove or import some of this ? */
-TCN_IMPLEMENT_CALL(jint, Library, size)(TCN_STDARGS, jint what)
-{
-    UNREFERENCED_STDARGS;
-/* TODO: Throw exception if no match ? We removed cases that may still be used. */
-    return 0;
-}
-
-
 JavaVM * tcn_get_java_vm()
 {
     return tcn_global_vm;
