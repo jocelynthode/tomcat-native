@@ -19,8 +19,8 @@
 # Top-level Makefile for TCNATIVE
 #
 
-C = @CC@
-LIBTOOL = @LIBTOOL@
+CC = @CC@
+LIBTOOL = libtool
 
 CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@
@@ -53,6 +53,7 @@ TARGETS = $(TARGET_LIB)
 @INCLUDE_OUTPUTS@
 
 COMPILE       = $(CC) $(INCLUDES)
+LT_COMPILE    = $(LIBTOOL) $(LTFLAGS) --mode=compile $(COMPILE) -o $@ -c $< && touch $@
 LINK          = $(LIBTOOL) $(LTFLAGS) --mode=link $(LT_LDFLAGS) $(COMPILE) -version-info $(TCNATIVE_LIBTOOL_VERSION) $(ALL_LDFLAGS) -o $@
 CLEAN_SUBDIRS = test
 
@@ -70,8 +71,9 @@ libdir=@libdir@
 includedir=@includedir@
 top_srcdir=@abs_srcdir@
 top_blddir=@abs_builddir@
+lib_target=@lib_target@
 
-OBJECTS=src/bb.o  src/jnilib.o  src/ssl.o  src/sslcontext.o  src/sslutils.o  src/threads.o
+OBJECTS=src/bb.lo  src/jnilib.lo  src/ssl.lo  src/sslcontext.lo  src/sslutils.lo  src/threads.lo
 
 #
 ## Implicit rules for creating outputs from input files
