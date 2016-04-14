@@ -416,45 +416,6 @@ static int ssl_rand_choosenum(int l, int h)
     return i;
 }
 
-static int ssl_rand_make(const char *file, int len, int base64)
-{
-    int r;
-    int num = len;
-    BIO *out = NULL;
-
-    out = crypto_methods.BIO_new(crypto_methods.BIO_s_file());
-    if (out == NULL)
-        return 0;
-    if ((r = crypto_methods.BIO_write_filename(out, (char *)file)) < 0) {
-        crypto_methods.BIO_free_all(out);
-        return 0;
-    }
-    if (base64) {
-        BIO *b64 = crypto_methods.BIO_new(BIO_f_base64());
-        if (b64 == NULL) {
-            crypto_methods.BIO_free_all(out);
-            return 0;
-        }
-        out = BIO_push(b64, out);
-    }
-    while (num > 0) {
-        unsigned char buf[4096];
-        int len = num;
-        if (len > sizeof(buf))
-            len = sizeof(buf);
-        r = RAND_bytes(buf, len);
-        if (r <= 0) {
-            crypto_methods.BIO_free_all(out);
-            return 0;
-        }
-        crypto_methods.BIO_write(out, buf, len);
-        num -= len;
-    }
-    r = BIO_flush(out);
-    crypto_methods.BIO_free_all(out);
-    return r > 0 ? 1 : 0;
-}
-
  /*TODO: Check method in ssl.c in ssl-experiments to see if we can take it and change dynamic to static */
 TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
@@ -551,17 +512,6 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     //alpn_init(e);
     //session_init(e);
     return (jint)APR_SUCCESS;
-}
-
-TCN_IMPLEMENT_CALL(jboolean, SSL, randMake)(TCN_STDARGS, jstring file,
-                                            jint length, jboolean base64)
-{
-    TCN_ALLOC_CSTRING(file);
-    int r;
-    UNREFERENCED(o);
-    r = ssl_rand_make(J2S(file), length, base64);
-    TCN_FREE_CSTRING(file);
-    return r ? JNI_TRUE : JNI_FALSE;
 }
 
 
