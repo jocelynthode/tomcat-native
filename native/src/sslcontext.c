@@ -27,6 +27,10 @@ static jclass byteArrayClass;
 static jclass    ssl_context_class;
 static jmethodID sni_java_callback;
 
+/* containers for libssl/libcrypto functions */
+extern ssl_dynamic_methods ssl_methods;
+extern crypto_dynamic_methods crypto_methods;
+
 /* Callback used when OpenSSL receives a client hello with a Server Name
  * Indication extension.
  */
@@ -196,7 +200,7 @@ TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
 
 
     /** To get back the tomcat wrapper from CTX */
-    ssl_methods.SSL_CTX_set_app_data(c->ctx, (char *)c);
+    ssl_methods.SSL_CTX_set_ex_data(c->ctx, 0, (char *)c);
 
 #ifdef SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
     /*
@@ -456,7 +460,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificateChainFile)(TCN_STDARGS, j
     TCN_ASSERT(ctx != 0);
     if (!J2S(file))
         return JNI_FALSE;
-    if (ssl_methods.SSL_CTX_use_certificate_chain(c->ctx, J2S(file), skipfirst) > 0)
+    if (SSL_CTX_use_certificate_chain(c->ctx, J2S(file), skipfirst) > 0)
         rv = JNI_TRUE;
     TCN_FREE_CSTRING(file);
     return rv;
@@ -756,7 +760,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificateRaw)(TCN_STDARGS, jlong c
                                                          jbyteArray javaCert, jbyteArray javaKey, jint idx)
 {
 #ifdef HAVE_ECC
-#if defined(ssl_methods.SSL_CTX_set_ecdh_auto)
+#if defined(SSL_CTX_set_ecdh_auto)
     EC_KEY *eckey = NULL;
 #endif
 #endif
@@ -851,7 +855,7 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificateRaw)(TCN_STDARGS, jlong c
     /*
      * TODO try to read the ECDH curve name from somewhere...
      */
-#if defined(ssl_methods.SSL_CTX_set_ecdh_auto)
+#if defined(SSL_CTX_set_ecdh_auto)
     ssl_methods.SSL_CTX_set_ecdh_auto(c->ctx, 1);
 #else
     eckey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -859,7 +863,8 @@ TCN_IMPLEMENT_CALL(jboolean, SSLContext, setCertificateRaw)(TCN_STDARGS, jlong c
     EC_KEY_free(eckey);
 #endif
 #endif
-    ssl_methods.SSL_CTX_set_tmp_dh_callback(c->ctx, SSL_callback_tmp_DH);
+    /* Expanded version of: SSL_CTX_set_tmp_dh_callback(c->ctx, SSL_callback_tmp_DH); */
+    ssl_methods.SSL_CTX_ctrl(c->ctx, SSL_CTRL_SET_TMP_ECDH, 0, (char *)SSL_callback_tmp_DH);
 cleanup:
     free(key);
     free(cert);
@@ -1058,26 +1063,6 @@ static int initProtocols(JNIEnv *e, const tcn_ssl_ctxt_t *c, unsigned char **pro
         *proto_data = p_data;
         *proto_len = p_data_len;
         return 0;
-    }
-}
-
-TCN_IMPLEMENT_CALL(void, SSLContext, setNpnProtos)(TCN_STDARGS, jlong ctx, jobjectArray next_protos,
-        jint selectorFailureBehavior)
-{
-    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
-
-    TCN_ASSERT(ctx != 0);
-    UNREFERENCED(o);
-
-    if (initProtocols(e, c, &c->next_proto_data, &c->next_proto_len, next_protos) == 0) {
-        c->next_selector_failure_behavior = selectorFailureBehavior;
-
-        // depending on if it's client mode or not we need to call different functions.
-        if (c->mode == SSL_MODE_CLIENT)  {
-            ssl_methods.SSL_CTX_set_next_proto_select_cb(c->ctx, SSL_callback_select_next_proto, (void *)c);
-        } else {
-            ssl_methods.SSL_CTX_set_next_protos_advertised_cb(c->ctx, SSL_callback_next_protos, (void *)c);
-        }
     }
 }
 

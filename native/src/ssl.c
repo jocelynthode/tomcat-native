@@ -324,10 +324,8 @@ int load_openssl_dynamic_methods(JNIEnv *e, const char * path) {
     REQUIRE_SSL_SYMBOL(SSL_CTX_load_verify_locations);
     REQUIRE_SSL_SYMBOL(SSL_CTX_new);
     REQUIRE_SSL_SYMBOL(SSL_CTX_sess_set_new_cb);
-    REQUIRE_SSL_SYMBOL(SSL_CTX_ctrl);
     REQUIRE_SSL_SYMBOL(SSL_CIPHER_get_name);
     REQUIRE_SSL_SYMBOL(SSL_CTX_callback_ctrl);
-    REQUIRE_SSL_SYMBOL(SSL_CTX_ctrl);
     REQUIRE_SSL_SYMBOL(SSL_CTX_get_ex_data);
     REQUIRE_SSL_SYMBOL(SSL_CTX_sess_set_remove_cb);
     GET_SSL_SYMBOL(SSL_CTX_set_alpn_protos);
@@ -468,6 +466,7 @@ int load_openssl_dynamic_methods(JNIEnv *e, const char * path) {
     REQUIRE_CRYPTO_SYMBOL(X509_get_serialNumber);
     REQUIRE_CRYPTO_SYMBOL(X509_get_subject_name);
     REQUIRE_CRYPTO_SYMBOL(d2i_X509);
+    REQUIRE_CRYPTO_SYMBOL(d2i_X509_bio);
     REQUIRE_CRYPTO_SYMBOL(get_rfc2409_prime_1024);
     REQUIRE_CRYPTO_SYMBOL(get_rfc3526_prime_2048);
     REQUIRE_CRYPTO_SYMBOL(get_rfc3526_prime_3072);
@@ -1093,7 +1092,7 @@ TCN_IMPLEMENT_CALL(jint /* status */, SSL, getShutdown)(TCN_STDARGS,
 TCN_IMPLEMENT_CALL(void, SSL, freeSSL)(TCN_STDARGS,
                                        jlong ssl /* SSL * */) {
     SSL *ssl_ = J2P(ssl, SSL *);
-    int *handshakeCount = ssl_methods.SSL_get_app_data3(ssl_);
+    int *handshakeCount = SSL_get_app_data3(ssl_);
 
     UNREFERENCED_STDARGS;
 
