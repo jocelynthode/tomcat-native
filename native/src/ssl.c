@@ -15,38 +15,28 @@
  */
 
 
-/*TODO: Do we need  all this ?
-    #include "utssl.h"
+#include <dlfcn.h>
 
-    #include <dlfcn.h>
+#if defined(SSL_OP_NO_TLSv1_1)
+#define HAVE_TLSV1_1
+#endif
 
+#if defined(SSL_OP_NO_TLSv1_2)
+#define HAVE_TLSV1_2
+#endif
 
-    #if defined(SSL_OP_NO_TLSv1_1)
-    #define HAVE_TLSV1_1
-    #endif
+#ifdef __APPLE__
+#define LIBCRYPTO_NAME "libcrypto.dylib"
+#else
+#define LIBCRYPTO_NAME "libcrypto"
+#endif
 
-    #if defined(SSL_OP_NO_TLSv1_2)
-    #define HAVE_TLSV1_2
-    #endif
+#ifdef __APPLE__
+#define LIBSSL_NAME "libssl.dylib"
+#else
+#define LIBSSL_NAME "libssl"
+#endif
 
-    #ifdef __APPLE__
-    #define LIBCRYPTO_NAME "libcrypto.dylib"
-    #else
-    #define LIBCRYPTO_NAME "libcrypto"
-    #endif
-
-    #ifdef __APPLE__
-    #define LIBSSL_NAME "libssl.dylib"
-    #else
-    #define LIBSSL_NAME "libssl"
-    #endif
-
-    #define REQUIRE_SSL_SYMBOL(symb) ssl_methods.symb = dlsym(ssl, #symb); if(ssl_methods.symb == 0) { printf("Failed to find %s", #symb); throwIllegalStateException(e, "Could not load required symbol from libssl: " #symb); return 1;}
-    #define GET_SSL_SYMBOL(symb) ssl_methods.symb = dlsym(ssl, #symb);
-    #define REQUIRE_CRYPTO_SYMBOL(symb) crypto_methods.symb = dlsym(crypto, #symb); if(crypto_methods.symb == 0) {printf("Failed to find %s", #symb); throwIllegalStateException(e, "Could not load required symbol from libcrypto: " #symb); return 1;}
-    #define GET_CRYPTO_SYMBOL(symb) crypto_methods.symb = dlsym(crypto, #symb);
-
-*/
 
 #include "tcn.h"
 
@@ -241,18 +231,20 @@ static DH *make_dh_params(BIGNUM *(*prime)(BIGNUM *), const char *gen)
     return dh;
 }
 
-/* Storage and initialization for DH parameters. */
+/* Storage and initialization for DH parameters.
+ * The prime function of each dhparam will be set when loading the library.
+ */
 static struct dhparam {
-    BIGNUM *(*const prime)(BIGNUM *); /* function to generate... */
+    BIGNUM *(* prime)(BIGNUM *); /* function to generate... */
     DH *dh;                           /* ...this, used for keys.... */
     const unsigned int min;           /* ...of length >= this. */
 } dhparams[] = {
-    { crypto_methods.get_rfc3526_prime_8192, NULL, 6145 },
-    { crypto_methods.get_rfc3526_prime_6144, NULL, 4097 },
-    { crypto_methods.get_rfc3526_prime_4096, NULL, 3073 },
-    { crypto_methods.get_rfc3526_prime_3072, NULL, 2049 },
-    { crypto_methods.get_rfc3526_prime_2048, NULL, 1025 },
-    { crypto_methods.get_rfc2409_prime_1024, NULL, 0 }
+    { 0, NULL, 6145 },
+    { 0, NULL, 4097 },
+    { 0, NULL, 3073 },
+    { 0, NULL, 2049 },
+    { 0, NULL, 1025 },
+    { 0, NULL, 0 }
 };
 
 static void init_dh_params(void)
@@ -299,6 +291,204 @@ void session_init(JNIEnv *e) {
     sessionContextClass = (jclass) (*e)->NewGlobalRef(e, sClazz);
     sessionInit = (*e)->GetMethodID(e, sessionContextClass, "sessionCreatedCallback", "(JJ[B)V");
     sessionRemove = (*e)->GetMethodID(e, sessionContextClass, "sessionRemovedCallback", "([B)V");
+}
+
+
+#define REQUIRE_SSL_SYMBOL(symb) ssl_methods.symb = dlsym(ssl, #symb); if(ssl_methods.symb == 0) { printf("Failed to find %s", #symb); throwIllegalStateException(e, "Could not load required symbol from libssl: " #symb); return 1;}
+#define GET_SSL_SYMBOL(symb) ssl_methods.symb = dlsym(ssl, #symb);
+#define REQUIRE_CRYPTO_SYMBOL(symb) crypto_methods.symb = dlsym(crypto, #symb); if(crypto_methods.symb == 0) {printf("Failed to find %s", #symb); throwIllegalStateException(e, "Could not load required symbol from libcrypto: " #symb); return 1;}
+#define GET_CRYPTO_SYMBOL(symb) crypto_methods.symb = dlsym(crypto, #symb);
+
+int load_openssl_dynamic_methods(JNIEnv *e, const char * path) {
+    void * ssl;
+    if(path == NULL) {
+        ssl = dlopen(LIBSSL_NAME, RTLD_LAZY);
+    } else {
+        int pathLen = strlen(path);
+        int size = (strlen(LIBSSL_NAME) + pathLen + 1);
+        char * full = malloc(sizeof(char) * size);
+        strncpy(full, path, size);
+        strncpy(full + pathLen, LIBSSL_NAME, size - pathLen);
+        ssl = dlopen(full, RTLD_LAZY);
+    }
+    REQUIRE_SSL_SYMBOL(SSLeay);
+    REQUIRE_SSL_SYMBOL(SSL_CIPHER_get_name);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_callback_ctrl);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_check_private_key);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_ctrl);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_free);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_get_cert_store);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_get_client_CA_list);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_get_ex_data);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_get_timeout);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_load_verify_locations);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_new);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_sess_set_new_cb);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_ctrl);
+    REQUIRE_SSL_SYMBOL(SSL_CIPHER_get_name);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_callback_ctrl);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_ctrl);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_get_ex_data);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_sess_set_remove_cb);
+    GET_SSL_SYMBOL(SSL_CTX_set_alpn_protos);
+    GET_SSL_SYMBOL(SSL_CTX_set_alpn_select_cb);
+    GET_SSL_SYMBOL(SSL_get0_alpn_selected);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_cert_verify_callback);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_cipher_list);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_default_verify_paths);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_ex_data);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_info_callback);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_session_id_context);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_timeout);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_verify);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_use_PrivateKey);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_use_certificate);
+    REQUIRE_SSL_SYMBOL(SSL_SESSION_free);
+    REQUIRE_SSL_SYMBOL(SSL_SESSION_get_id);
+    REQUIRE_SSL_SYMBOL(SSL_SESSION_get_time);
+    REQUIRE_SSL_SYMBOL(SSL_add_file_cert_subjects_to_stack);
+    REQUIRE_SSL_SYMBOL(SSL_ctrl);
+    REQUIRE_SSL_SYMBOL(SSL_do_handshake);
+    REQUIRE_SSL_SYMBOL(SSL_free);
+    REQUIRE_SSL_SYMBOL(SSL_get_ciphers);
+    REQUIRE_SSL_SYMBOL(SSL_get_current_cipher);
+    REQUIRE_SSL_SYMBOL(SSL_get_ex_data);
+    REQUIRE_SSL_SYMBOL(SSL_get_ex_data_X509_STORE_CTX_idx);
+    REQUIRE_SSL_SYMBOL(SSL_get_ex_new_index);
+    REQUIRE_SSL_SYMBOL(SSL_get_peer_cert_chain);
+    REQUIRE_SSL_SYMBOL(SSL_get_peer_certificate);
+    REQUIRE_SSL_SYMBOL(SSL_get_privatekey);
+    REQUIRE_SSL_SYMBOL(SSL_get_servername);
+    REQUIRE_SSL_SYMBOL(SSL_get_session);
+    REQUIRE_SSL_SYMBOL(SSL_get_shutdown);
+    REQUIRE_SSL_SYMBOL(SSL_get_version);
+    REQUIRE_SSL_SYMBOL(SSL_library_init);
+    REQUIRE_SSL_SYMBOL(SSL_load_client_CA_file);
+    REQUIRE_SSL_SYMBOL(SSL_load_error_strings);
+    REQUIRE_SSL_SYMBOL(SSL_new);
+    REQUIRE_SSL_SYMBOL(SSL_pending);
+    REQUIRE_SSL_SYMBOL(SSL_read);
+    REQUIRE_SSL_SYMBOL(SSL_renegotiate);
+    REQUIRE_SSL_SYMBOL(SSL_renegotiate_pending);
+    REQUIRE_SSL_SYMBOL(SSL_set_SSL_CTX);
+    REQUIRE_SSL_SYMBOL(SSL_set_accept_state);
+    REQUIRE_SSL_SYMBOL(SSL_set_bio);
+    REQUIRE_SSL_SYMBOL(SSL_set_cipher_list);
+    REQUIRE_SSL_SYMBOL(SSL_set_connect_state);
+    REQUIRE_SSL_SYMBOL(SSL_set_ex_data);
+    REQUIRE_SSL_SYMBOL(SSL_set_verify);
+    REQUIRE_SSL_SYMBOL(SSL_set_verify_result);
+    REQUIRE_SSL_SYMBOL(SSL_shutdown);
+    REQUIRE_SSL_SYMBOL(SSL_state);
+    REQUIRE_SSL_SYMBOL(SSL_write);
+    REQUIRE_SSL_SYMBOL(SSLv23_client_method);
+    REQUIRE_SSL_SYMBOL(SSLv23_method);
+    REQUIRE_SSL_SYMBOL(SSLv23_server_method);
+    REQUIRE_SSL_SYMBOL(SSLv3_client_method);
+    REQUIRE_SSL_SYMBOL(SSLv3_method);
+    REQUIRE_SSL_SYMBOL(SSLv3_server_method);
+    GET_SSL_SYMBOL(TLSv1_1_client_method);
+    GET_SSL_SYMBOL(TLSv1_1_method);
+    GET_SSL_SYMBOL(TLSv1_1_server_method);
+    GET_SSL_SYMBOL(TLSv1_2_client_method);
+    GET_SSL_SYMBOL(TLSv1_2_method);
+    GET_SSL_SYMBOL(TLSv1_2_server_method);
+    GET_SSL_SYMBOL(TLSv1_client_method);
+    GET_SSL_SYMBOL(TLSv1_method);
+    GET_SSL_SYMBOL(TLSv1_server_method);
+    GET_SSL_SYMBOL(TLS_client_method);
+    GET_SSL_SYMBOL(TLS_server_method);
+    GET_SSL_SYMBOL(TLS_method);
+    REQUIRE_SSL_SYMBOL(SSL_CTX_set_client_CA_list);
+
+    void * crypto = dlopen(LIBCRYPTO_NAME, RTLD_LAZY);
+    if(path == NULL) {
+        crypto = dlopen(LIBCRYPTO_NAME, RTLD_LAZY);
+    } else {
+        int pathLen = strlen(path);
+        int size = (strlen(LIBCRYPTO_NAME) + pathLen + 1);
+        char * full = malloc(sizeof(char) * size);
+        strncpy(full, path, size);
+        strncpy(full + pathLen, LIBCRYPTO_NAME, size - pathLen);
+        crypto = dlopen(full, RTLD_LAZY);
+    }
+
+
+    REQUIRE_CRYPTO_SYMBOL(ASN1_INTEGER_cmp);
+    REQUIRE_CRYPTO_SYMBOL(BIO_ctrl);
+    REQUIRE_CRYPTO_SYMBOL(BIO_ctrl_pending);
+    REQUIRE_CRYPTO_SYMBOL(BIO_free);
+    REQUIRE_CRYPTO_SYMBOL(BIO_new);
+    REQUIRE_CRYPTO_SYMBOL(BIO_new_bio_pair);
+    REQUIRE_CRYPTO_SYMBOL(BIO_printf);
+    REQUIRE_CRYPTO_SYMBOL(BIO_read);
+    REQUIRE_CRYPTO_SYMBOL(BIO_s_file);
+    REQUIRE_CRYPTO_SYMBOL(BIO_s_mem);
+    REQUIRE_CRYPTO_SYMBOL(BIO_write);
+    REQUIRE_CRYPTO_SYMBOL(CRYPTO_free);
+    REQUIRE_CRYPTO_SYMBOL(CRYPTO_num_locks);
+    REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_dynlock_create_callback);
+    REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_dynlock_destroy_callback);
+    REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_dynlock_lock_callback);
+    REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_id_callback);
+    REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_locking_callback);
+    REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_mem_functions);
+    REQUIRE_CRYPTO_SYMBOL(ERR_error_string);
+    REQUIRE_CRYPTO_SYMBOL(ERR_get_error);
+    REQUIRE_CRYPTO_SYMBOL(ERR_load_crypto_strings);
+    REQUIRE_CRYPTO_SYMBOL(EVP_Digest);
+    REQUIRE_CRYPTO_SYMBOL(EVP_PKEY_bits);
+    REQUIRE_CRYPTO_SYMBOL(EVP_PKEY_free);
+    REQUIRE_CRYPTO_SYMBOL(EVP_PKEY_type);
+    REQUIRE_CRYPTO_SYMBOL(EVP_sha1);
+    REQUIRE_CRYPTO_SYMBOL(OPENSSL_add_all_algorithms_noconf);
+    REQUIRE_CRYPTO_SYMBOL(OPENSSL_load_builtin_modules);
+    REQUIRE_CRYPTO_SYMBOL(PEM_read_bio_PrivateKey);
+    REQUIRE_CRYPTO_SYMBOL(X509_CRL_verify);
+    REQUIRE_CRYPTO_SYMBOL(X509_LOOKUP_ctrl);
+    REQUIRE_CRYPTO_SYMBOL(X509_LOOKUP_file);
+    REQUIRE_CRYPTO_SYMBOL(X509_LOOKUP_hash_dir);
+    REQUIRE_CRYPTO_SYMBOL(X509_OBJECT_free_contents);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_CTX_cleanup);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_CTX_get_current_cert);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_CTX_get_error);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_CTX_get_error_depth);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_CTX_get_ex_data);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_CTX_init);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_CTX_set_error);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_add_lookup);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_free);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_get_by_subject);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_new);
+    REQUIRE_CRYPTO_SYMBOL(X509_STORE_set_flags);
+    REQUIRE_CRYPTO_SYMBOL(X509_cmp_current_time);
+    REQUIRE_CRYPTO_SYMBOL(X509_free);
+    REQUIRE_CRYPTO_SYMBOL(X509_get_issuer_name);
+    REQUIRE_CRYPTO_SYMBOL(X509_get_pubkey);
+    REQUIRE_CRYPTO_SYMBOL(X509_get_serialNumber);
+    REQUIRE_CRYPTO_SYMBOL(X509_get_subject_name);
+    REQUIRE_CRYPTO_SYMBOL(d2i_X509);
+    REQUIRE_CRYPTO_SYMBOL(get_rfc2409_prime_1024);
+    REQUIRE_CRYPTO_SYMBOL(get_rfc3526_prime_2048);
+    REQUIRE_CRYPTO_SYMBOL(get_rfc3526_prime_3072);
+    REQUIRE_CRYPTO_SYMBOL(get_rfc3526_prime_4096);
+    REQUIRE_CRYPTO_SYMBOL(get_rfc3526_prime_6144);
+    REQUIRE_CRYPTO_SYMBOL(get_rfc3526_prime_8192);
+    REQUIRE_CRYPTO_SYMBOL(i2d_X509);
+    REQUIRE_CRYPTO_SYMBOL(sk_num);
+    REQUIRE_CRYPTO_SYMBOL(sk_value);
+    REQUIRE_CRYPTO_SYMBOL(X509_free);
+    GET_CRYPTO_SYMBOL(ENGINE_load_builtin_engines);
+
+
+    dhparams[0].prime = crypto_methods.get_rfc3526_prime_8192;
+    dhparams[1].prime = crypto_methods.get_rfc3526_prime_6144;
+    dhparams[2].prime = crypto_methods.get_rfc3526_prime_4096;
+    dhparams[3].prime = crypto_methods.get_rfc3526_prime_3072;
+    dhparams[4].prime = crypto_methods.get_rfc3526_prime_2048;
+    dhparams[5].prime = crypto_methods.get_rfc2409_prime_1024;
+
+    return 0;
 }
 
 
@@ -446,7 +636,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 #if HAVE_ENGINE_LOAD_BUILTIN_ENGINES
     crypto_methods.ENGINE_load_builtin_engines();
 #endif
-    crypto_methdos.OPENSSL_load_builtin_modules();
+    crypto_methods.OPENSSL_load_builtin_modules();
 
     /* Initialize thread support */
     ssl_thread_setup();
