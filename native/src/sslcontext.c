@@ -867,40 +867,6 @@ cleanup:
     return rv;
 }
 
-//TODO: Import array header and APR_ARRAY_IDX ?
-//static int ssl_array_index(apr_array_header_t *array,
-//                           const char *s)
-//{
-//    int i;
-//    for (i = 0; i < array->nelts; i++) {
-//        const char *p = APR_ARRAY_IDX(array, i, const char*);
-//        if (!strcmp(p, s)) {
-//            return i;
-//        }
-//    }
-//    return -1;
-//}
-
-/* TODO: Implement without apr */
-//static int ssl_cmp_alpn_protos(apr_array_header_t *array,
-//                               const char *proto1,
-//                               const char *proto2)
-//{
-//    int index1 = ssl_array_index(array, proto1);
-//    int index2 = ssl_array_index(array, proto2);
-//    if (index2 > index1) {
-//        return (index1 >= 0)? 1 : -1;
-//    }
-//    else if (index1 > index2) {
-//        return (index2 >= 0)? -1 : 1;
-//    }
-//
-//    /* Both have the same index (-1 so neither listed by cient) compare
-//     * the names so that spdy3 gets precedence over spdy2. That makes
-//     * the outcome at least deterministic. */
-//    return strcmp((const char *)proto1, (const char *)proto2);
-//}
-
 /*
  * This callback function is executed when the TLS Application Layer
  * Protocol Negotiate Extension (ALPN, RFC 7301) is triggered by the client
@@ -913,86 +879,102 @@ cleanup:
  * The client protocol list is serialized as length byte followed by ascii
  * characters (not null-terminated), followed by the next protocol name.
  */
+
 int cb_server_alpn(SSL *ssl,
                    const unsigned char **out, unsigned char *outlen,
                    const unsigned char *in, unsigned int inlen, void *arg)
 {
-    /* TODO: Support ALPN without using APR */
-    return SSL_TLSEXT_ERR_ALERT_FATAL;
-//    tcn_ssl_ctxt_t *tcsslctx = (tcn_ssl_ctxt_t *)arg;
-//    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_app_data(ssl);
-//    apr_array_header_t *client_protos;
-//    apr_array_header_t *proposed_protos;
-//    int i;
-//    size_t len;
-//
-//    if (inlen == 0) {
-//        // Client specified an empty protocol list. Nothing to negotiate.
-//        return SSL_TLSEXT_ERR_ALERT_FATAL;
-//    }
-//
-//    //TODO: Check what this function does ?
-//    client_protos = apr_array_make(con->pool , 0, sizeof(char *));
-//    for (i = 0; i < inlen; /**/) {
-//        /* Grab length of next item from leading length byte */
-//        unsigned int plen = in[i++];
-//        if (plen + i > inlen) {
-//            // The protocol name extends beyond the declared length
-//            // of the protocol list.
-//            return SSL_TLSEXT_ERR_ALERT_FATAL;
-//        }
-//        APR_ARRAY_PUSH(client_protos, char*) = apr_pstrndup(con->pool, (const char *)in+i, plen);
-//        i += plen;
-//    }
-//
-//    if (tcsslctx->alpn == NULL) {
-//        // Server supported protocol names not set.
-//        return SSL_TLSEXT_ERR_ALERT_FATAL;
-//    }
-//
-//    if (tcsslctx->alpnlen == 0) {
-//        // Server supported protocols is an empty list
-//        return SSL_TLSEXT_ERR_ALERT_FATAL;
-//    }
-//
-//    proposed_protos = apr_array_make(con->pool, 0, sizeof(char *));
-//    for (i = 0; i < tcsslctx->alpnlen; /**/) {
-//        /* Grab length of next item from leading length byte */
-//        unsigned int plen = tcsslctx->alpn[i++];
-//        if (plen + i > tcsslctx->alpnlen) {
-//            // The protocol name extends beyond the declared length
-//            // of the protocol list.
-//            return SSL_TLSEXT_ERR_ALERT_FATAL;
-//        }
-//        //TODO: Check what this does
-//        APR_ARRAY_PUSH(proposed_protos, char*) = apr_pstrndup(con->pool, (const char *)tcsslctx->alpn+i, plen);
-//        i += plen;
-//    }
-//
-//    if (proposed_protos->nelts <= 0) {
-//        // Should never happen. The server did not specify any protocols.
-//        return SSL_TLSEXT_ERR_ALERT_FATAL;
-//    }
-//
-//    /* Now select the most preferred protocol from the proposals. */
-//    *out = APR_ARRAY_IDX(proposed_protos, 0, const unsigned char *);
-//    for (i = 1; i < proposed_protos->nelts; ++i) {
-//        const char *proto = APR_ARRAY_IDX(proposed_protos, i, const char*);
-//        /* Do we prefer it over existing candidate? */
-//        if (ssl_cmp_alpn_protos(client_protos, (const char *)*out, proto) < 0) {
-//            *out = (const unsigned char*)proto;
-//        }
-//    }
-//
-//    len = strlen((const char*)*out);
-//    if (len > 255) {
-//        // Agreed protocol name too long
-//        return SSL_TLSEXT_ERR_ALERT_FATAL;
-//    }
-//
-//    *outlen = (unsigned char)len;
-//
-//    return SSL_TLSEXT_ERR_OK;
+    /* Taken from SSL_callback_alpn_select_proto.
+       TODO take full alpn.c? */
+
+    /* TODO dynload */
+    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl, 0);
+
+    if(con->alpn_selection_callback == NULL) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    /* Get the JNI environment for this callback */
+    JavaVM *javavm = tcn_get_java_vm();
+    JNIEnv *e;
+    (*javavm)->AttachCurrentThread(javavm, (void **)&e, NULL);
+
+    const unsigned char *p;
+    const unsigned char *end;
+    const unsigned char *proto;
+    unsigned char proto_len;
+
+    /* TODO: Cache references to these e.g. in some init function */
+    jclass sClazz = (*e)->FindClass(e, "java/lang/String");
+    jclass stringClass = (jclass) (*e)->NewGlobalRef(e, sClazz);
+    jmethodID stringEquals = (*e)->GetMethodID(e, stringClass, "equals", "(Ljava/lang/Object;)Z");
+    /* ENDTODO */
+
+    p = in;
+    end = in + inlen;
+    /* first we count them */
+    int count = 0;
+    while (p < end) {
+        proto_len = *p;
+        proto = ++p;
+        if (proto + proto_len <= end) {
+            count++;
+        }
+        /* Move on to the next protocol. */
+        p += proto_len;
+    }
+    /* now we allocate an array */
+    jobjectArray array = (*e)->NewObjectArray(e, count, stringClass, NULL);
+    jobject nativeArray[count];
+    p = in;
+    end = in + inlen;
+    int c = 0;
+
+    while (p < end) {
+        proto_len = *p;
+        proto = ++p;
+        if (proto + proto_len <= end) {
+            jobject string = tcn_new_stringn(e, (const char*)proto, proto_len);
+            nativeArray[c] = string;
+            (*e)->SetObjectArrayElement(e, array, c++, string);
+        }
+        /* Move on to the next protocol. */
+        p += proto_len;
+    }
+
+    jclass clazz = (*e)->GetObjectClass(e, con->alpn_selection_callback);
+    jmethodID method = (*e)->GetMethodID(e, clazz, "select", "([Ljava/lang/String;)Ljava/lang/String;");
+    jobject result = (*e)->CallObjectMethod(e, con->alpn_selection_callback, method, array);
+
+    if(result == NULL) {
+        (*javavm)->DetachCurrentThread(javavm);
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    p = in;
+    end = in + inlen;
+    c = 0;
+    while (p < end) {
+        proto_len = *p;
+        proto = ++p;
+        if (proto + proto_len <= end) {
+            jobject string = nativeArray[c++];
+            if((*e)->CallBooleanMethod(e, string, stringEquals, result)) {
+
+                /* we have a match */
+                *out = proto;
+                *outlen = proto_len;
+                (*javavm)->DetachCurrentThread(javavm);
+                return SSL_TLSEXT_ERR_OK;
+            }
+        }
+        /* Move on to the next protocol. */
+        p += proto_len;
+    }
+
+    /* it did not return a valid response */
+    (*javavm)->DetachCurrentThread(javavm);
+    return SSL_TLSEXT_ERR_NOACK;
 }
 
 
