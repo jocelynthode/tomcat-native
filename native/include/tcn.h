@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
+ /* openssl is deprecated on OSX
+    this pragma directive is requires to build it
+    otherwise -Wall -Werror fail the build
+    TODO: See if we want to integrate
+
+ #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ */
+
 #ifndef TCN_H
 #define TCN_H
 
