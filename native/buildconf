@@ -22,6 +22,7 @@ rm -rf aclocal.m4 autom4te*.cache
 
 echo "Creating configure ..."
 libtoolize --force
+automake --force-missing --add-missing
 ### do some work to toss config.cache?
 ${AUTOCONF:-autoconf}
 if [ $? -gt 0 ]; then
