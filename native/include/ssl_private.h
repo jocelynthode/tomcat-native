@@ -108,8 +108,6 @@
 #define SSL_SHUTDOWN_TYPE_UNCLEAN   (2)
 #define SSL_SHUTDOWN_TYPE_ACCURATE  (3)
 
-#define SSL_TO_APR_ERROR(X)         (APR_OS_START_USERERR + 1000 + X)
-
 #define SSL_INFO_SESSION_ID                 (0x0001)
 #define SSL_INFO_CIPHER                     (0x0002)
 #define SSL_INFO_CIPHER_USEKEYSIZE          (0x0003)

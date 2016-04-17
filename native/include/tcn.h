@@ -50,37 +50,6 @@
 #define TCN_ASSERT(x) (void)0
 #endif
 
-#ifndef APR_MAX_IOVEC_SIZE
-#define APR_MAX_IOVEC_SIZE 1024
-#endif
-
-#define TCN_TIMEUP      APR_OS_START_USERERR + 1
-#define TCN_EAGAIN      APR_OS_START_USERERR + 2
-#define TCN_EINTR       APR_OS_START_USERERR + 3
-#define TCN_EINPROGRESS APR_OS_START_USERERR + 4
-#define TCN_ETIMEDOUT   APR_OS_START_USERERR + 5
-
-#define TCN_LOG_EMERG  1
-#define TCN_LOG_ERROR  2
-#define TCN_LOG_NOTICE 3
-#define TCN_LOG_WARN   4
-#define TCN_LOG_INFO   5
-#define TCN_LOG_DEBUG  6
-
-#define TCN_ERROR_WRAP(E)                   \
-    if (APR_STATUS_IS_TIMEUP(E))            \
-        (E) = TCN_TIMEUP;                   \
-    else if (APR_STATUS_IS_EAGAIN(E))       \
-        (E) = TCN_EAGAIN;                   \
-    else if (APR_STATUS_IS_EINTR(E))        \
-        (E) = TCN_EINTR;                    \
-    else if (APR_STATUS_IS_EINPROGRESS(E))  \
-        (E) = TCN_EINPROGRESS;              \
-    else if (APR_STATUS_IS_ETIMEDOUT(E))    \
-        (E) = TCN_ETIMEDOUT;                \
-    else                                    \
-        (E) = (E)
-
 #define TCN_CLASS_PATH  "org/apache/tomcat/jni/"
 #define TCN_ERROR_CLASS TCN_CLASS_PATH "Error"
 #define TCN_PARENT_IDE  "TCN_PARENT_ID"
@@ -142,8 +111,6 @@ void session_init(JNIEnv *e);
 
 #define J2S(V)  c##V
 #define J2L(V)  p##V
-
-#define J2T(T) (apr_time_t)((T))
 
 #define TCN_BEGIN_MACRO     if (1) {
 #define TCN_END_MACRO       } else (void)(0)

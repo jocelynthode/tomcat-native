@@ -41,15 +41,15 @@ jint tcn_get_java_env(JNIEnv **);
 
 /* Temporary define APR types */
 
-#define APR_SUCCESS 0
+#define TCN_SUCCESS 0
 // WRONG value:
-#define APR_ENOTIMPL -1
+#define TCN_ENOTIMPL -1
 
 #define TCN_STRINGIFY(n) TCN_STRINGIFY_HELPER(n)
 #define TCN_STRINGIFY_HELPER(n) #n
 
 
-typedef int apr_status_t;
+typedef int tcn_status_t;
 
 
 #endif /* TCN_API_H */

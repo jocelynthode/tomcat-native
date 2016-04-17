@@ -151,7 +151,7 @@ public class Echo {
         public void add(long socket) {
             int rv = Poll.add(serverPollset, socket,
                               Poll.APR_POLLIN);
-            if (rv == Status.APR_SUCCESS) {
+            if (rv == Status.TCN_SUCCESS) {
                 System.out.println("Added worker to pollset");
                 nsocks++;
             }
@@ -159,7 +159,7 @@ public class Echo {
 
         public void remove(long socket) {
             int rv = Poll.remove(serverPollset, socket);
-            if (rv == Status.APR_SUCCESS) {
+            if (rv == Status.TCN_SUCCESS) {
                nsocks--;
                System.out.println("Removed worker from pollset");
             }

@@ -322,10 +322,10 @@ TCN_IMPLEMENT_CALL(jstring, SSL, versionString)(TCN_STDARGS)
  */
 
 
-static apr_status_t ssl_init_cleanup()
+static tcn_status_t ssl_init_cleanup()
 {
     if (!ssl_initialized)
-        return (jint)APR_SUCCESS;
+        return (jint)TCN_SUCCESS;
     ssl_initialized = 0;
 
     if (tcn_password_callback.cb.obj) {
@@ -362,7 +362,7 @@ static apr_status_t ssl_init_cleanup()
      *       (when enabled) at this late stage in the game:
      * CRYPTO_mem_leaks_fp(stderr);
      */
-    return APR_SUCCESS;
+    return TCN_SUCCESS;
 }
 
 #ifndef OPENSSL_NO_ENGINE
@@ -381,7 +381,7 @@ static ENGINE *ssl_try_load_engine(const char *engine)
 }
 #endif
 
-static apr_status_t ssl_thread_cleanup(void *data)
+static tcn_status_t ssl_thread_cleanup(void *data)
 {
     UNREFERENCED(data);
     CRYPTO_set_locking_callback(NULL);
@@ -394,7 +394,7 @@ static apr_status_t ssl_thread_cleanup(void *data)
 
     /* Let the registered mutex cleanups do their own thing
      */
-    return APR_SUCCESS;
+    return TCN_SUCCESS;
 }
 
 /* TODO: Rewrite */
@@ -462,7 +462,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* Check if already initialized */
     if (ssl_initialized++) {
         TCN_FREE_CSTRING(engine);
-        return (jint)APR_SUCCESS;
+        return (jint)TCN_SUCCESS;
     }
 
     /* We must register the library in full, to ensure our configuration
@@ -487,25 +487,25 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 
     if (J2S(engine)) {
         ENGINE *ee = NULL;
-        apr_status_t err = APR_SUCCESS;
+        tcn_status_t err = TCN_SUCCESS;
         if(strcmp(J2S(engine), "auto") == 0) {
             ENGINE_register_all_complete();
         }
         else {
             if ((ee = ENGINE_by_id(J2S(engine))) == NULL
                 && (ee = ssl_try_load_engine(J2S(engine))) == NULL)
-                err = APR_ENOTIMPL;
+                err = TCN_ENOTIMPL;
             else {
                 if (strcmp(J2S(engine), "chil") == 0)
                     ENGINE_ctrl(ee, ENGINE_CTRL_CHIL_SET_FORKCHECK, 1, 0, 0);
                 if (!ENGINE_set_default(ee, ENGINE_METHOD_ALL))
-                    err = APR_ENOTIMPL;
+                    err = TCN_ENOTIMPL;
             }
             /* Free our "structural" reference. */
             if (ee)
                 ENGINE_free(ee);
         }
-        if (err != APR_SUCCESS) {
+        if (err != TCN_SUCCESS) {
             TCN_FREE_CSTRING(engine);
             ssl_init_cleanup();
 //            tcn_ThrowAPRException(e, err);
@@ -545,7 +545,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* TODO: add those ? */
     //alpn_init(e);
     //session_init(e);
-    return (jint)APR_SUCCESS;
+    return (jint)TCN_SUCCESS;
 }
 
 TCN_IMPLEMENT_CALL(jboolean, SSL, randMake)(TCN_STDARGS, jstring file,
@@ -605,14 +605,14 @@ typedef struct  {
     tcn_callback_t cb;
 } BIO_JAVA;
 
-static apr_status_t generic_bio_cleanup(void *data)
+static tcn_status_t generic_bio_cleanup(void *data)
 {
     BIO *b = (BIO *)data;
 
     if (b) {
         BIO_free(b);
     }
-    return APR_SUCCESS;
+    return TCN_SUCCESS;
 }
 
 void SSL_BIO_close(BIO *bi)
