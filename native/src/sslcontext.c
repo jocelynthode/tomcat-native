@@ -906,7 +906,7 @@ int cb_server_alpn(SSL *ssl,
     jclass sClazz = (*e)->FindClass(e, "java/lang/String");
     jclass stringClass = (jclass) (*e)->NewGlobalRef(e, sClazz);
     jmethodID stringEquals = (*e)->GetMethodID(e, stringClass, "equals", "(Ljava/lang/Object;)Z");
-    /* ENDTODO */
+    /* TODO END */
 
     p = in;
     end = in + inlen;

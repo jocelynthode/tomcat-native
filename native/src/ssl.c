@@ -54,7 +54,6 @@
 #include "ssl_private.h"
 
 static int ssl_initialized = 0;
-static char *ssl_global_rand_file = NULL;
 
 ENGINE *tcn_ssl_engine = NULL;
 tcn_pass_cb_t tcn_password_callback;
@@ -290,7 +289,7 @@ DH *SSL_get_dh_params(unsigned keylen)
 }
 
 void session_init(JNIEnv *e) {
-    jclass sClazz = (*e)->FindClass(e, "io/undertow/openssl/OpenSSLSessionContext");
+    jclass sClazz = (*e)->FindClass(e, "io/undertow/openssl/OpenSSLSessionContext"); /*TODO Remove underttow Reference*/
     sessionContextClass = (jclass) (*e)->NewGlobalRef(e, sClazz);
     sessionInit = (*e)->GetMethodID(e, sessionContextClass, "sessionCreatedCallback", "(JJ[B)V");
     sessionRemove = (*e)->GetMethodID(e, sessionContextClass, "sessionRemovedCallback", "([B)V");
@@ -397,60 +396,6 @@ static tcn_status_t ssl_thread_cleanup(void *data)
     return TCN_SUCCESS;
 }
 
-/* TODO: Rewrite */
-static int ssl_rand_choosenum(int l, int h)
-{
-    int i;
-    char buf[50];
-
-    snprintf(buf, sizeof(buf), "%.0f",
-                 (((double)(rand()%RAND_MAX)/RAND_MAX)*(h-l)));
-    i = atoi(buf)+1;
-    if (i < l) i = l;
-    if (i > h) i = h;
-    return i;
-}
-
-static int ssl_rand_make(const char *file, int len, int base64)
-{
-    int r;
-    int num = len;
-    BIO *out = NULL;
-
-    out = BIO_new(BIO_s_file());
-    if (out == NULL)
-        return 0;
-    if ((r = BIO_write_filename(out, (char *)file)) < 0) {
-        BIO_free_all(out);
-        return 0;
-    }
-    if (base64) {
-        BIO *b64 = BIO_new(BIO_f_base64());
-        if (b64 == NULL) {
-            BIO_free_all(out);
-            return 0;
-        }
-        out = BIO_push(b64, out);
-    }
-    while (num > 0) {
-        unsigned char buf[4096];
-        int len = num;
-        if (len > sizeof(buf))
-            len = sizeof(buf);
-        r = RAND_bytes(buf, len);
-        if (r <= 0) {
-            BIO_free_all(out);
-            return 0;
-        }
-        BIO_write(out, buf, len);
-        num -= len;
-    }
-    r = BIO_flush(out);
-    BIO_free_all(out);
-    return r > 0 ? 1 : 0;
-}
-
- /*TODO: Check method in ssl.c in ssl-experiments to see if we can take it and change dynamic to static */
 TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
     jclass clazz;
@@ -508,9 +453,8 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
         if (err != TCN_SUCCESS) {
             TCN_FREE_CSTRING(engine);
             ssl_init_cleanup();
-//            tcn_ThrowAPRException(e, err);
             char dummy_error[50];
-            snprintf(dummy_error, 50, "APR Error number: %d", err);
+            snprintf(dummy_error, 50, "Error number: %d", err);
             throwIllegalStateException(e, dummy_error);
             return (jint)err;
         }
@@ -523,7 +467,6 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     memset(&tcn_password_callback, 0, sizeof(tcn_pass_cb_t));
 
     init_dh_params();
-    /* TODO END */
     /*
      * Let us cleanup the ssl library when the library is unloaded
      */
@@ -547,18 +490,6 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     //session_init(e);
     return (jint)TCN_SUCCESS;
 }
-
-TCN_IMPLEMENT_CALL(jboolean, SSL, randMake)(TCN_STDARGS, jstring file,
-                                            jint length, jboolean base64)
-{
-    TCN_ALLOC_CSTRING(file);
-    int r;
-    UNREFERENCED(o);
-    r = ssl_rand_make(J2S(file), length, base64);
-    TCN_FREE_CSTRING(file);
-    return r ? JNI_TRUE : JNI_FALSE;
-}
-
 
 TCN_IMPLEMENT_CALL(jint, SSL, fipsModeGet)(TCN_STDARGS)
 {
@@ -830,7 +761,6 @@ static void ssl_info_callback(const SSL *ssl, int where, int ret) {
     }
 }
 
- /* TODO: Take from ssl.c in ssl-experiments and rewrite so that we don't use dynamic functions */
 TCN_IMPLEMENT_CALL(jlong /* SSL * */, SSL, newSSL)(TCN_STDARGS,
                                                    jlong ctx /* tcn_ssl_ctxt_t * */,
                                                    jboolean server) {

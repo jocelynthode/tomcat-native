@@ -36,6 +36,7 @@ struct CRYPTO_dynlock_value {
 static int ssl_lock_num_locks;
 
 
+/*TODO use agnostic lock instead of pthread in code */
 
 static void ssl_thread_lock(int mode, int type,
                             const char *file, int line)
