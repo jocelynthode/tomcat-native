@@ -325,8 +325,6 @@ void        SSL_callback_handshake(const SSL *, int, int);
 int         SSL_CTX_use_certificate_chain(SSL_CTX *, const char *, int);
 int         SSL_callback_SSL_verify(int, X509_STORE_CTX *);
 int         SSL_rand_seed(const char *file);
-int         SSL_callback_next_protos(SSL *, const unsigned char **, unsigned int *, void *);
-int         SSL_callback_select_next_proto(SSL *, unsigned char **, unsigned char *, const unsigned char *, unsigned int,void *);
 int         SSL_callback_alpn_select_proto(SSL *, const unsigned char **, unsigned char *, const unsigned char *, unsigned int, void *);
 
 

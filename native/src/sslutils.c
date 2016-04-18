@@ -577,88 +577,96 @@ void SSL_callback_handshake(const SSL *ssl, int where, int rc)
 
 }
 
-int SSL_callback_next_protos(SSL *ssl, const unsigned char **data,
-                             unsigned int *len, void *arg)
-{
-    tcn_ssl_ctxt_t *ssl_ctxt = arg;
+int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
+        const unsigned char *in, unsigned int inlen, void *arg) {
 
-    *data = ssl_ctxt->next_proto_data;
-    *len = ssl_ctxt->next_proto_len;
+    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl, 0);
 
-    return SSL_TLSEXT_ERR_OK;
-}
+    if(con->alpn_selection_callback == NULL) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
 
-/* The code here is inspired by nghttp2
- *
- * See https://github.com/tatsuhiro-t/nghttp2/blob/ae0100a9abfcf3149b8d9e62aae216e946b517fb/src/shrpx_ssl.cc#L244 */
-int select_next_proto(SSL *ssl, const unsigned char **out, unsigned char *outlen,
-        const unsigned char *in, unsigned int inlen, unsigned char *supported_protos,
-        unsigned int supported_protos_len, int failure_behavior) {
+    /* Get the JNI environment for this callback */
+    JavaVM *javavm = tcn_get_java_vm();
+    JNIEnv *e;
+    (*javavm)->AttachCurrentThread(javavm, (void **)&e, NULL);
 
-    unsigned int i = 0;
-    unsigned char target_proto_len;
     const unsigned char *p;
     const unsigned char *end;
     const unsigned char *proto;
     unsigned char proto_len;
 
-    while (i < supported_protos_len) {
-        target_proto_len = *supported_protos;
-        ++supported_protos;
+    /* TODO: Cache references to these e.g. in some init function */
+    jclass sClazz = (*e)->FindClass(e, "java/lang/String");
+    jclass stringClass = (jclass) (*e)->NewGlobalRef(e, sClazz);
+    jmethodID stringEquals = (*e)->GetMethodID(e, stringClass, "equals", "(Ljava/lang/Object;)Z");
+    /* TODO END */
 
-        p = in;
-        end = in + inlen;
+    p = in;
+    end = in + inlen;
+    /* first we count them */
+    int count = 0;
+    while (p < end) {
+        proto_len = *p;
+        proto = ++p;
+        if (proto + proto_len <= end) {
+            count++;
+        }
+        /* Move on to the next protocol. */
+        p += proto_len;
+    }
+    /* now we allocate an array */
+    jobjectArray array = (*e)->NewObjectArray(e, count, stringClass, NULL);
+    jobject nativeArray[count];
+    p = in;
+    end = in + inlen;
+    int c = 0;
 
-        while (p < end) {
-            proto_len = *p;
-            proto = ++p;
+    while (p < end) {
+        proto_len = *p;
+        proto = ++p;
+        if (proto + proto_len <= end) {
+            jobject string = tcn_new_stringn(e, (const char*)proto, proto_len);
+            nativeArray[c] = string;
+            (*e)->SetObjectArrayElement(e, array, c++, string);
+        }
+        /* Move on to the next protocol. */
+        p += proto_len;
+    }
 
-            if (proto + proto_len <= end && target_proto_len == proto_len &&
-                    memcmp(supported_protos, proto, proto_len) == 0) {
+    jclass clazz = (*e)->GetObjectClass(e, con->alpn_selection_callback);
+    jmethodID method = (*e)->GetMethodID(e, clazz, "select", "([Ljava/lang/String;)Ljava/lang/String;");
+    jobject result = (*e)->CallObjectMethod(e, con->alpn_selection_callback, method, array);
 
-                // We found a match, so set the output and return with OK!
+    if(result == NULL) {
+        (*javavm)->DetachCurrentThread(javavm);
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    p = in;
+    end = in + inlen;
+    c = 0;
+    while (p < end) {
+        proto_len = *p;
+        proto = ++p;
+        if (proto + proto_len <= end) {
+            jobject string = nativeArray[c++];
+            if((*e)->CallBooleanMethod(e, string, stringEquals, result)) {
+
+                /* we have a match */
                 *out = proto;
                 *outlen = proto_len;
-
+                (*javavm)->DetachCurrentThread(javavm);
                 return SSL_TLSEXT_ERR_OK;
             }
-            // Move on to the next protocol.
-            p += proto_len;
         }
-
-        // increment len and pointers.
-        i += target_proto_len;
-        supported_protos += target_proto_len;
+        /* Move on to the next protocol. */
+        p += proto_len;
     }
 
-    if (failure_behavior == SSL_SELECTOR_FAILURE_CHOOSE_MY_LAST_PROTOCOL) {
-         // There were no match but we just select our last protocol and hope the other peer support it.
-         //
-         // decrement the pointer again so the pointer points to the start of the protocol.
-         /* XXX compiler warning: 'proto_len' and 'p' may be used uninitialized in this function */
-         p -= proto_len;
-         *out = p;
-         *outlen = proto_len;
-         return SSL_TLSEXT_ERR_OK;
-    }
-    /* TODO: OpenSSL currently not support to fail with fatal error. Once this changes we can also support it here.
-           Issue https://github.com/openssl/openssl/issues/188 has been created for this.
-     Nothing matched so not select anything and just accept. */
+    /* it did not return a valid response */
+    (*javavm)->DetachCurrentThread(javavm);
     return SSL_TLSEXT_ERR_NOACK;
-}
-
-int SSL_callback_select_next_proto(SSL *ssl, unsigned char **out, unsigned char *outlen,
-                         const unsigned char *in, unsigned int inlen,
-                         void *arg) {
-    tcn_ssl_ctxt_t *ssl_ctxt = arg;
-    return select_next_proto(ssl, (const unsigned char **) out, outlen, in, inlen, ssl_ctxt->next_proto_data, ssl_ctxt->next_proto_len, ssl_ctxt->next_selector_failure_behavior);
-}
-
-//TODO: Should this be replaced with method from ssl-experiments ?
-int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
-        const unsigned char *in, unsigned int inlen, void *arg) {
-    tcn_ssl_ctxt_t *ssl_ctxt = arg;
-    return select_next_proto(ssl, out, outlen, in, inlen, ssl_ctxt->alpn_proto_data, ssl_ctxt->alpn_proto_len, ssl_ctxt->alpn_selector_failure_behavior);
 }
 
 #endif /* HAVE_OPENSSL  */
