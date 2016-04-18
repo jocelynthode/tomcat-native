@@ -287,7 +287,7 @@ TCN_IMPLEMENT_CALL(jstring, SSL, versionString)(TCN_STDARGS)
  */
 
 
-static tcn_status_t ssl_init_cleanup()
+tcn_status_t ssl_init_cleanup()
 {
     if (!ssl_initialized)
         return (jint)TCN_SUCCESS;

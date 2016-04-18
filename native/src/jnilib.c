@@ -21,7 +21,6 @@
 #ifdef TCN_DO_STATISTICS
 extern void sp_poll_dump_statistics();
 extern void sp_network_dump_statistics();
-extern void ssl_network_dump_statistics();
 #endif
 
 static JavaVM     *tcn_global_vm = NULL;
@@ -29,6 +28,8 @@ static JavaVM     *tcn_global_vm = NULL;
 static jclass    jString_class;
 static jmethodID jString_init;
 static jmethodID jString_getBytes;
+extern void ssl_network_dump_statistics();
+tcn_status_t ssl_init_cleanup();
 
 int tcn_parent_pid = 0;
 
@@ -174,6 +175,13 @@ TCN_IMPLEMENT_CALL(jstring, Library, versionString)(TCN_STDARGS)
 JavaVM * tcn_get_java_vm()
 {
     return tcn_global_vm;
+}
+
+TCN_IMPLEMENT_CALL(void, Library, terminate)(TCN_STDARGS)
+{
+
+    UNREFERENCED_STDARGS;
+    ssl_init_cleanup();
 }
 
 jint tcn_get_java_env(JNIEnv **env)
