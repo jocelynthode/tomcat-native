@@ -217,15 +217,15 @@ crypto_dynamic_methods crypto_methods;
  */
 static DH *make_dh_params(BIGNUM *(*prime)(BIGNUM *), const char *gen)
 {
-    DH *dh = DH_new();
+    DH *dh = crypto_methods.DH_new();
 
     if (!dh) {
         return NULL;
     }
     dh->p = prime(NULL);
-    BN_dec2bn(&dh->g, gen);
+    crypto_methods.BN_dec2bn(&dh->g, gen);
     if (!dh->p || !dh->g) {
-        DH_free(dh);
+        crypto_methods.DH_free(dh);
         return NULL;
     }
     return dh;
@@ -382,9 +382,9 @@ int load_openssl_dynamic_methods(JNIEnv *e, const char * path) {
     REQUIRE_SSL_SYMBOL(SSLv23_client_method);
     REQUIRE_SSL_SYMBOL(SSLv23_method);
     REQUIRE_SSL_SYMBOL(SSLv23_server_method);
-    REQUIRE_SSL_SYMBOL(SSLv3_client_method);
-    REQUIRE_SSL_SYMBOL(SSLv3_method);
-    REQUIRE_SSL_SYMBOL(SSLv3_server_method);
+    GET_SSL_SYMBOL(SSLv3_client_method);
+    GET_SSL_SYMBOL(SSLv3_method);
+    GET_SSL_SYMBOL(SSLv3_server_method);
     GET_SSL_SYMBOL(TLSv1_1_client_method);
     GET_SSL_SYMBOL(TLSv1_1_method);
     GET_SSL_SYMBOL(TLSv1_1_server_method);
@@ -432,6 +432,9 @@ int load_openssl_dynamic_methods(JNIEnv *e, const char * path) {
     REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_id_callback);
     REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_locking_callback);
     REQUIRE_CRYPTO_SYMBOL(CRYPTO_set_mem_functions);
+    REQUIRE_CRYPTO_SYMBOL(BN_dec2bn);
+    REQUIRE_CRYPTO_SYMBOL(DH_new);
+    REQUIRE_CRYPTO_SYMBOL(DH_free);
     REQUIRE_CRYPTO_SYMBOL(ERR_error_string);
     REQUIRE_CRYPTO_SYMBOL(ERR_get_error);
     REQUIRE_CRYPTO_SYMBOL(ERR_load_crypto_strings);
@@ -505,11 +508,13 @@ TCN_IMPLEMENT_CALL(jint, SSL, version)(TCN_STDARGS)
 TCN_IMPLEMENT_CALL(jstring, SSL, versionString)(TCN_STDARGS)
 {
     UNREFERENCED(o);
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    return AJP_TO_JSTRING(SSLeay_version(SSLEAY_VERSION));
-#else
-    return AJP_TO_JSTRING(OpenSSL_version(OPENSSL_VERSION));
-#endif
+//#if OPENSSL_VERSION_NUMBER < 0x10100000L
+//    return AJP_TO_JSTRING(SSLeay_version(SSLEAY_VERSION));
+//#else
+//    return AJP_TO_JSTRING(OpenSSL_version(OPENSSL_VERSION));
+//#endif
+    // TODO implement dynamically
+    return AJP_TO_JSTRING("versionString not implemented");
 }
 
 /*
@@ -640,11 +645,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* We must register the library in full, to ensure our configuration
      * code can successfully test the SSL environment.
      */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    CRYPTO_malloc_init();
-#else
-    OPENSSL_malloc_init();
-#endif
+    crypto_methods.CRYPTO_set_mem_functions(malloc, realloc, free);
     crypto_methods.ERR_load_crypto_strings();
     ssl_methods.SSL_load_error_strings();
     ssl_methods.SSL_library_init();

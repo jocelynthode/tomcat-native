@@ -443,6 +443,9 @@ typedef struct {
     void (*CRYPTO_set_id_callback)(unsigned long (*func) (void));
     void (*CRYPTO_set_locking_callback)(void (*func) (int mode, int type,const char *file,int line));
     int (*CRYPTO_set_mem_functions)(void *(*m)(size_t),void *(*r)(void *,size_t), void (*f)(void *));
+    int (*BN_dec2bn)(BIGNUM **a, const char *str);
+    DH* (*DH_new)(void);
+    void (*DH_free)(DH *dh);
     char *(*ERR_error_string)(unsigned long e, char *buf);
 
     unsigned long (*ERR_get_error)(void);
