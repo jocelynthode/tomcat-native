@@ -14,40 +14,6 @@
  * limitations under the License.
  */
 
-
-/*TODO: Do we need  all this ?
-    #include "utssl.h"
-
-    #include <dlfcn.h>
-
-
-    #if defined(SSL_OP_NO_TLSv1_1)
-    #define HAVE_TLSV1_1
-    #endif
-
-    #if defined(SSL_OP_NO_TLSv1_2)
-    #define HAVE_TLSV1_2
-    #endif
-
-    #ifdef __APPLE__
-    #define LIBCRYPTO_NAME "libcrypto.dylib"
-    #else
-    #define LIBCRYPTO_NAME "libcrypto"
-    #endif
-
-    #ifdef __APPLE__
-    #define LIBSSL_NAME "libssl.dylib"
-    #else
-    #define LIBSSL_NAME "libssl"
-    #endif
-
-    #define REQUIRE_SSL_SYMBOL(symb) ssl_methods.symb = dlsym(ssl, #symb); if(ssl_methods.symb == 0) { printf("Failed to find %s", #symb); throwIllegalStateException(e, "Could not load required symbol from libssl: " #symb); return 1;}
-    #define GET_SSL_SYMBOL(symb) ssl_methods.symb = dlsym(ssl, #symb);
-    #define REQUIRE_CRYPTO_SYMBOL(symb) crypto_methods.symb = dlsym(crypto, #symb); if(crypto_methods.symb == 0) {printf("Failed to find %s", #symb); throwIllegalStateException(e, "Could not load required symbol from libcrypto: " #symb); return 1;}
-    #define GET_CRYPTO_SYMBOL(symb) crypto_methods.symb = dlsym(crypto, #symb);
-
-*/
-
 #include "tcn.h"
 
 #ifdef HAVE_OPENSSL

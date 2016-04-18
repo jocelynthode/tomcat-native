@@ -885,7 +885,6 @@ int cb_server_alpn(SSL *ssl,
     /* Taken from SSL_callback_alpn_select_proto.
        TODO take full alpn.c? */
 
-    /* TODO dynload */
     tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl, 0);
 
     if(con->alpn_selection_callback == NULL) {
