@@ -399,6 +399,8 @@ int load_openssl_dynamic_methods(JNIEnv *e, const char * path) {
     GET_SSL_SYMBOL(TLS_method);
     REQUIRE_SSL_SYMBOL(SSL_CTX_set_client_CA_list);
 
+    printf("==== asdjlkjads jhlkjlkj \n");
+
     void * crypto = dlopen(LIBCRYPTO_NAME, RTLD_LAZY);
     if(path == NULL) {
         crypto = dlopen(LIBCRYPTO_NAME, RTLD_LAZY);
@@ -482,7 +484,7 @@ int load_openssl_dynamic_methods(JNIEnv *e, const char * path) {
     REQUIRE_CRYPTO_SYMBOL(sk_value);
     REQUIRE_CRYPTO_SYMBOL(X509_free);
     GET_CRYPTO_SYMBOL(ENGINE_load_builtin_engines);
-
+    printf("==== end \n");
 
     dhparams[0].prime = crypto_methods.get_rfc3526_prime_8192;
     dhparams[1].prime = crypto_methods.get_rfc3526_prime_6144;
@@ -718,6 +720,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
     /* TODO: add those ? */
     //alpn_init(e);
     //session_init(e);
+    printf("====3\n");
     return (jint)APR_SUCCESS;
 }
 

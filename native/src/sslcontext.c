@@ -27,6 +27,7 @@ static jclass byteArrayClass;
 static jclass    ssl_context_class;
 static jmethodID sni_java_callback;
 
+
 /* Callback used when OpenSSL receives a client hello with a Server Name
  * Indication extension.
  */
@@ -78,6 +79,8 @@ int ssl_callback_ServerNameIndication(SSL *ssl, int *al, tcn_ssl_ctxt_t *c)
 TCN_IMPLEMENT_CALL(jlong, SSLContext, make)(TCN_STDARGS,
                                             jint protocol, jint mode)
 {
+
+    printf("====ssl make\n");
     tcn_ssl_ctxt_t *c = NULL;
     SSL_CTX *ctx = NULL;
     jclass clazz;

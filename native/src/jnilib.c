@@ -35,6 +35,7 @@ int tcn_parent_pid = 0;
 /* Called by the JVM when APR_JAVA is loaded */
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
 {
+    printf("====ASss\n");
     JNIEnv *env;
     void   *ppe;
 
@@ -61,6 +62,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
     tcn_parent_pid = getppid();
 #endif
 
+    printf("====AS\n");
     return  JNI_VERSION_1_4;
 }
 
