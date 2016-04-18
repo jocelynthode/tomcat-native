@@ -28,13 +28,13 @@
 #ifdef __APPLE__
 #define LIBCRYPTO_NAME "libcrypto.dylib"
 #else
-#define LIBCRYPTO_NAME "libcrypto"
+#define LIBCRYPTO_NAME "libcrypto.so"
 #endif
 
 #ifdef __APPLE__
 #define LIBSSL_NAME "libssl.dylib"
 #else
-#define LIBSSL_NAME "libssl"
+#define LIBSSL_NAME "libssl.so"
 #endif
 
 
