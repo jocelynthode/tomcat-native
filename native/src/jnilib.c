@@ -132,16 +132,13 @@ jint throwIllegalArgumentException( JNIEnv *env, char *message )
 }
 
 void tcn_Throw(JNIEnv *env, char *fmt, ...) {
-    throwIllegalStateException(env, fmt);
-/* TODO */
-/*
     char msg[8124] = {'\0'};
     va_list ap;
 
     va_start(ap, fmt);
-    snprintf(msg, 8124, fmt, ap);
+    vsnprintf(msg, 8124, fmt, ap);
     throwIllegalStateException(env, msg);
-    va_end(ap);*/
+    va_end(ap);
 }
 
 TCN_IMPLEMENT_CALL(jint, Library, version)(TCN_STDARGS, jint what)
