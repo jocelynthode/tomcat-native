@@ -577,7 +577,8 @@ void SSL_callback_handshake(const SSL *ssl, int where, int rc)
 
 }
 
-int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
+/* callback from ssl-experiment, to be mergend in TCN */
+int undertow_SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
         const unsigned char *in, unsigned int inlen, void *arg) {
 
     tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl, 0);
@@ -666,6 +667,69 @@ int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned
 
     /* it did not return a valid response */
     (*javavm)->DetachCurrentThread(javavm);
+    return SSL_TLSEXT_ERR_NOACK;
+}
+
+/* To be replaced by common callback (between TC and Undertow) */
+int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
+        const unsigned char *in, unsigned int inlen, void *arg) {
+    tcn_ssl_ctxt_t *ssl_ctxt = arg;
+    return select_next_proto(ssl, out, outlen, in, inlen, ssl_ctxt->alpn_proto_data, ssl_ctxt->alpn_proto_len, ssl_ctxt->alpn_selector_failure_behavior);
+}
+
+int select_next_proto(SSL *ssl, const unsigned char **out, unsigned char *outlen,
+        const unsigned char *in, unsigned int inlen, unsigned char *supported_protos,
+        unsigned int supported_protos_len, int failure_behavior) {
+
+    unsigned int i = 0;
+    unsigned char target_proto_len;
+    const unsigned char *p;
+    const unsigned char *end;
+    const unsigned char *proto;
+    unsigned char proto_len;
+
+    while (i < supported_protos_len) {
+        target_proto_len = *supported_protos;
+        ++supported_protos;
+
+        p = in;
+        end = in + inlen;
+
+        while (p < end) {
+            proto_len = *p;
+            proto = ++p;
+
+            if (proto + proto_len <= end && target_proto_len == proto_len &&
+                    memcmp(supported_protos, proto, proto_len) == 0) {
+
+                // We found a match, so set the output and return with OK!
+                *out = proto;
+                *outlen = proto_len;
+
+                return SSL_TLSEXT_ERR_OK;
+            }
+            // Move on to the next protocol.
+            p += proto_len;
+        }
+
+        // increment len and pointers.
+        i += target_proto_len;
+        supported_protos += target_proto_len;
+    }
+
+    if (failure_behavior == SSL_SELECTOR_FAILURE_CHOOSE_MY_LAST_PROTOCOL) {
+         // There were no match but we just select our last protocol and hope the other peer support it.
+         //
+         // decrement the pointer again so the pointer points to the start of the protocol.
+         /* XXX compiler warning: 'proto_len' and 'p' may be used uninitialized in this function */
+         p -= proto_len;
+         *out = p;
+         *outlen = proto_len;
+         return SSL_TLSEXT_ERR_OK;
+    }
+    // TODO: OpenSSL currently not support to fail with fatal error. Once this changes we can also support it here.
+    //       Issue https://github.com/openssl/openssl/issues/188 has been created for this.
+    // Nothing matched so not select anything and just accept.
     return SSL_TLSEXT_ERR_NOACK;
 }
 
