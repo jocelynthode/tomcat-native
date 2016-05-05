@@ -578,7 +578,7 @@ void SSL_callback_handshake(const SSL *ssl, int where, int rc)
 }
 
 /* callback from ssl-experiment, to be mergend in TCN */
-int undertow_SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
+int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
         const unsigned char *in, unsigned int inlen, void *arg) {
 
     tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl, 0);
@@ -671,11 +671,11 @@ int undertow_SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out,
 }
 
 /* To be replaced by common callback (between TC and Undertow) */
-int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
+/* int SSL_callback_alpn_select_proto(SSL* ssl, const unsigned char **out, unsigned char *outlen,
         const unsigned char *in, unsigned int inlen, void *arg) {
     tcn_ssl_ctxt_t *ssl_ctxt = arg;
     return select_next_proto(ssl, out, outlen, in, inlen, ssl_ctxt->alpn_proto_data, ssl_ctxt->alpn_proto_len, ssl_ctxt->alpn_selector_failure_behavior);
-}
+} */
 
 int select_next_proto(SSL *ssl, const unsigned char **out, unsigned char *outlen,
         const unsigned char *in, unsigned int inlen, unsigned char *supported_protos,
