@@ -1008,6 +1008,7 @@ static int initProtocols(JNIEnv *e, const tcn_ssl_ctxt_t *c, unsigned char **pro
     }
 }
 
+/* TODO: Only use it for client side */
 TCN_IMPLEMENT_CALL(void, SSLContext, setAlpnProtos)(TCN_STDARGS, jlong ctx, jobjectArray alpn_protos,
         jint selectorFailureBehavior)
 {
