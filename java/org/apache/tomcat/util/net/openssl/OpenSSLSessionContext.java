@@ -36,7 +36,7 @@ public class OpenSSLSessionContext implements SSLSessionContext {
     private final OpenSSLSessionStats stats;
     private final long context;
 
-    OpenSSLSessionContext(long context) {
+    public OpenSSLSessionContext(long context) {
         this.context = context;
         stats = new OpenSSLSessionStats(context);
     }

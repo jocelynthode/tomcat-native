@@ -187,7 +187,7 @@ public final class OpenSSLEngine extends SSLEngine implements ProtocolInfo {
      * @param sessionContext the {@link OpenSSLSessionContext} this
      * {@link SSLEngine} belongs to.
      */
-    OpenSSLEngine(long sslCtx, String fallbackApplicationProtocol,
+    public OpenSSLEngine(long sslCtx, String fallbackApplicationProtocol,
             boolean clientMode, OpenSSLSessionContext sessionContext, boolean alpn) {
         if (sslCtx == 0) {
             throw new IllegalArgumentException(sm.getString("engine.noSSLContext"));

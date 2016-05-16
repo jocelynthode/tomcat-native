@@ -30,7 +30,7 @@ public class OpenSSLKeyManager implements KeyManager{
     public File getPrivateKey() { return privateKey; }
     public void setPrivateKey(File privateKey) { this.privateKey = privateKey; }
 
-    OpenSSLKeyManager(String certChainFile, String keyFile) {
+    public OpenSSLKeyManager(String certChainFile, String keyFile) {
         if (certChainFile == null) {
             return;
         }
