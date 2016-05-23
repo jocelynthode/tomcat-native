@@ -1002,7 +1002,7 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setAlpnProtos)(TCN_STDARGS, jlong ctx, jobj
         jint selectorFailureBehavior)
 {
     int alpn_proto_len = 0;
-    char* alpn_proto_data = NULL;
+    unsigned char* alpn_proto_data = NULL;
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
 
     if (c->mode != SSL_MODE_CLIENT)  {
