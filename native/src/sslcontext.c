@@ -301,17 +301,6 @@ TCN_IMPLEMENT_CALL(jint, SSLContext, free)(TCN_STDARGS, jlong ctx)
         }
         c->verifier_method = NULL;
 
-        if (c->next_proto_data) {
-            free(c->next_proto_data);
-            c->next_proto_data = NULL;
-        }
-        c->next_proto_len = 0;
-
-        if (c->alpn_proto_data) {
-            free(c->alpn_proto_data);
-            c->alpn_proto_data = NULL;
-        }
-        c->alpn_proto_len = 0;
     }
     return 0;
 }
@@ -1012,20 +1001,22 @@ static int initProtocols(JNIEnv *e, const tcn_ssl_ctxt_t *c, unsigned char **pro
 TCN_IMPLEMENT_CALL(void, SSLContext, setAlpnProtos)(TCN_STDARGS, jlong ctx, jobjectArray alpn_protos,
         jint selectorFailureBehavior)
 {
+    int alpn_proto_len = 0;
+    char* alpn_proto_data = NULL;
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
 
+    if (c->mode != SSL_MODE_CLIENT)  {
+        // setAlpnProtos is now only useful in client mode.
+        return;
+    }
     TCN_ASSERT(ctx != 0);
     UNREFERENCED(o);
 
-    if (initProtocols(e, c, &c->alpn_proto_data, &c->alpn_proto_len, alpn_protos) == 0) {
+    if (initProtocols(e, c, &alpn_proto_data, &alpn_proto_len, alpn_protos) == 0) {
         c->alpn_selector_failure_behavior = selectorFailureBehavior;
-
-        // depending on if it's client mode or not we need to call different functions.
-        if (c->mode == SSL_MODE_CLIENT)  {
-            SSL_CTX_set_alpn_protos(c->ctx, c->alpn_proto_data, c->alpn_proto_len);
-        } else {
-            SSL_CTX_set_alpn_select_cb(c->ctx, SSL_callback_alpn_select_proto, (void *) c);
-
+        SSL_CTX_set_alpn_protos(c->ctx, alpn_proto_data, alpn_proto_len);
+        if (alpn_proto_data != NULL) {
+            free(alpn_proto_data);
         }
     }
 }

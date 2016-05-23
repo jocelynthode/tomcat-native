@@ -264,13 +264,6 @@ typedef struct {
     jobject verifier;
     jmethodID verifier_method;
 
-    unsigned char   *next_proto_data;
-    unsigned int    next_proto_len;
-    int             next_selector_failure_behavior;
-
-    /* Holds the alpn protocols, each of them prefixed with the len of the protocol */
-    unsigned char   *alpn_proto_data;
-    unsigned int    alpn_proto_len;
     int             alpn_selector_failure_behavior;
     /* End add from netty-tcnative */
     jobject session_context;

@@ -328,11 +328,12 @@ public final class SSLContext {
     public static native void setCertVerifyCallback(long ctx, CertificateVerifier verifier);
 
     /**
-     * Set application layer protocol for application layer protocol negotiation extension
+     * Set application layer protocol for application layer protocol negotiation extension in SSL client mode
      * @param ctx Server context to use.
      * @param alpnProtos protocols in priority order
      * @param selectorFailureBehavior see {@link SSL#SSL_SELECTOR_FAILURE_NO_ADVERTISE}
      *                                and {@link SSL#SSL_SELECTOR_FAILURE_CHOOSE_MY_LAST_PROTOCOL}
+     *                                (It isn't taken in account right now)
      */
     public static native void setAlpnProtos(long ctx, String[] alpnProtos, int selectorFailureBehavior);
 

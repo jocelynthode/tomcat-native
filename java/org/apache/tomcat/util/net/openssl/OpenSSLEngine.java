@@ -868,46 +868,6 @@ public final class OpenSSLEngine extends SSLEngine implements ProtocolInfo {
     }
 
     private void handshake() throws SSLException {
-        if (!alpnRegistered) {
-            // TODO: Use jetty ALPN
-            System.out.println("==== REGISTER ALPN CALLBACK");
-            alpnRegistered = true;
-
-            SSL.setServerALPNCallback(ssl, new ServerALPNCallback() {
-                @Override
-                public String select(String[] data) {
-                    System.out.println(Arrays.toString(data));
-                    if (Arrays.asList(data).contains("h2")) {
-                        return "h2";
-                    }
-                    return null;
-                }
-            });
-
-//            final ALPN.Provider cb = ALPN.get(this);
-//            System.out.println("======= cb is:" + cb);
-//            if (cb != null) {
-//                SSLContext.setServerALPNCallback(ssl, new ServerALPNCallback() {
-//                    @Override
-//                    public String select(String[] data) {
-//
-//                        ALPN.ServerProvider provider = (ALPN.ServerProvider) ALPN.remove(OpenSSLEngine.this);
-//                        if (provider != null) {
-//                            try {
-//                                System.out.println("================ truc: " + provider.select(Arrays.asList(data)));
-//                                return provider.select(Arrays.asList(data));
-//                            } catch (SSLException e) {
-//                                e.printStackTrace();
-//                            }
-//                        }
-//                        System.out.println("================ truc null");
-//                        return null;
-//                    }
-//                });
-//            }
-        }
-
-
         currentHandshake = SSL.getHandshakeCount(ssl);
         int code = SSL.doHandshake(ssl);
         if (code <= 0) {
@@ -1085,6 +1045,10 @@ public final class OpenSSLEngine extends SSLEngine implements ProtocolInfo {
         super.finalize();
         // Call shutdown as the user may have created the OpenSslEngine and not used it at all.
         shutdown();
+    }
+
+    public void setServerALPNCallback(ServerALPNCallback cb) {
+        SSL.setServerALPNCallback(ssl, cb);
     }
 
     private class OpenSSLSession implements SSLSession {
