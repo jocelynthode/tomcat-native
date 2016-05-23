@@ -102,8 +102,11 @@ typedef struct {
 /* ENDTODO */
 
 void setup_session_context(JNIEnv *e, tcn_ssl_ctxt_t *c);
+tcn_status_t ssl_init_cleanup();
+
 /*thread setup function*/
 void ssl_thread_setup();
+tcn_status_t ssl_thread_cleanup();
 
 void alpn_init(JNIEnv *e);
 void session_init(JNIEnv *e);

@@ -140,6 +140,8 @@ static void ssl_dyn_destroy_function(struct CRYPTO_dynlock_value *l,
     free(l);
 #endif
 }
+
+
 void ssl_thread_setup()
 {
     int i;
@@ -165,4 +167,20 @@ void ssl_thread_setup()
     CRYPTO_set_dynlock_create_callback(ssl_dyn_create_function);
     CRYPTO_set_dynlock_lock_callback(ssl_dyn_lock_function);
     CRYPTO_set_dynlock_destroy_callback(ssl_dyn_destroy_function);
+}
+
+
+tcn_status_t ssl_thread_cleanup()
+{
+    CRYPTO_set_locking_callback(NULL);
+    #if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
+    CRYPTO_set_id_callback(NULL);
+    #endif
+    CRYPTO_set_dynlock_create_callback(NULL);
+    CRYPTO_set_dynlock_lock_callback(NULL);
+    CRYPTO_set_dynlock_destroy_callback(NULL);
+
+    /* Let the registered mutex cleanups do their own thing
+     */
+    return TCN_SUCCESS;
 }

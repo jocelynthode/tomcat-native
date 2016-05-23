@@ -29,7 +29,6 @@ static jclass    jString_class;
 static jmethodID jString_init;
 static jmethodID jString_getBytes;
 extern void ssl_network_dump_statistics();
-tcn_status_t ssl_init_cleanup();
 
 int tcn_parent_pid = 0;
 
@@ -178,6 +177,7 @@ TCN_IMPLEMENT_CALL(void, Library, terminate)(TCN_STDARGS)
 {
 
     UNREFERENCED_STDARGS;
+    ssl_thread_cleanup();
     ssl_init_cleanup();
 }
 

@@ -333,22 +333,6 @@ static ENGINE *ssl_try_load_engine(const char *engine)
 }
 #endif
 
-static tcn_status_t ssl_thread_cleanup(void *data)
-{
-    UNREFERENCED(data);
-    CRYPTO_set_locking_callback(NULL);
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(OPENSSL_USE_DEPRECATED)
-    CRYPTO_set_id_callback(NULL);
-#endif
-    CRYPTO_set_dynlock_create_callback(NULL);
-    CRYPTO_set_dynlock_lock_callback(NULL);
-    CRYPTO_set_dynlock_destroy_callback(NULL);
-
-    /* Let the registered mutex cleanups do their own thing
-     */
-    return TCN_SUCCESS;
-}
-
 TCN_IMPLEMENT_CALL(jint, SSL, initialize)(TCN_STDARGS, jstring engine)
 {
     jclass clazz;
