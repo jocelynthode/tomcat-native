@@ -1045,21 +1045,6 @@ TCN_IMPLEMENT_CALL(void, SSLContext, enableAlpn)(TCN_STDARGS, jlong ctx)
 
 }
 
-TCN_IMPLEMENT_CALL(void, SSLContext, setServerALPNCallback)(TCN_STDARGS, jlong ssl, jobject callback) {
-    if(SSL_CTX_set_alpn_protos == NULL) {
-        return;
-    }
-    SSL *ssl_ = J2P(ssl, SSL *);
-
-    if (ssl_ == NULL) {
-        throwIllegalStateException(e, "ssl is null");
-        return;
-    }
-    tcn_ssl_conn_t *con = (tcn_ssl_conn_t *)SSL_get_ex_data(ssl_, 0);
-
-    con->alpn_selection_callback = (*e)->NewGlobalRef(e, callback);
-}
-
 TCN_IMPLEMENT_CALL(jlong, SSLContext, setSessionCacheMode)(TCN_STDARGS, jlong ctx, jlong mode)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);

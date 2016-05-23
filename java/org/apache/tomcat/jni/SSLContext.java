@@ -84,7 +84,7 @@ public final class SSLContext {
     /**
      * enables ALPN on the server side
      */
-    public static native void enableAlpn(long ssl);
+    public static native void enableAlpn(long ctx);
 
     /**
      * Cipher Suite available for negotiation in SSL handshake.
@@ -335,14 +335,6 @@ public final class SSLContext {
      *                                and {@link SSL#SSL_SELECTOR_FAILURE_CHOOSE_MY_LAST_PROTOCOL}
      */
     public static native void setAlpnProtos(long ctx, String[] alpnProtos, int selectorFailureBehavior);
-
-    /**
-     * Sets the server ALPN callback for a spcific engine
-     * @param ssl The SSL engine
-     * @param callback the callbackto use
-     */
-     //TODO might be useful late but needs a ServerALPNCallback interface
-     public static native void setServerALPNCallback(long ssl, ServerALPNCallback callback);
 
     /**
      * Set the context within which session be reused (server side only)

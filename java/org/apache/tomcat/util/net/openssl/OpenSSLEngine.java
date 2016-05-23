@@ -189,6 +189,7 @@ public final class OpenSSLEngine extends SSLEngine implements ProtocolInfo {
      */
     public OpenSSLEngine(long sslCtx, String fallbackApplicationProtocol,
             boolean clientMode, OpenSSLSessionContext sessionContext, boolean alpn) {
+        // TODO: use boolean alpn ?
         if (sslCtx == 0) {
             throw new IllegalArgumentException(sm.getString("engine.noSSLContext"));
         }
@@ -872,7 +873,7 @@ public final class OpenSSLEngine extends SSLEngine implements ProtocolInfo {
             System.out.println("==== REGISTER ALPN CALLBACK");
             alpnRegistered = true;
 
-            SSLContext.setServerALPNCallback(ssl, new ServerALPNCallback() {
+            SSL.setServerALPNCallback(ssl, new ServerALPNCallback() {
                 @Override
                 public String select(String[] data) {
                     System.out.println(Arrays.toString(data));

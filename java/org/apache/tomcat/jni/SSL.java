@@ -16,6 +16,8 @@
  */
 package org.apache.tomcat.jni;
 
+import org.apache.tomcat.util.net.openssl.ServerALPNCallback;
+
 /** SSL
  *
  * @author Mladen Turk
@@ -590,4 +592,11 @@ public final class SSL {
      * @return the session as byte array representation obtained via SSL_SESSION_get_id.
      */
     public static native byte[] getSessionId(long ssl);
+
+    /**
+     * Sets the server ALPN callback for a spcific engine
+     * @param ssl The SSL engine
+     * @param callback the callbackto use
+     */
+    public static native void setServerALPNCallback(long ssl, ServerALPNCallback callback);
 }
