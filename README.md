@@ -22,7 +22,7 @@ Then build the native shared object:
 * Add tomcat-native paths to startup scripts:
 ```
 echo CLASSPATH="$TCN2/dist/tomcat-native-1.2.5.jar" >> bin/setenv.sh
-echo export JAVA_TOOL_OPTIONS="-Djava.library.path=$TCN2/tomcat-native/native/.libs/" >> bin/setenv.sh
+echo export JAVA_TOOL_OPTIONS="-Djava.library.path=$TCN2/native/.libs/" >> bin/setenv.sh
 ```
 
 * Run ant to copy some config files: `ant`
@@ -48,6 +48,5 @@ find test/org/apache/tomcat/util/net/ -iname "test*.java" -a ! -iname 'tester*.j
 Now run the HTTP2 OpenSSL Server example:
 ```
 cd examples/target
-java "-Djava.library.path=$TCN2/native/.libs" -Xbootclasspath/p:alpn.jar -cp undertow-examples.jar
+java "-Djava.library.path=$TCN2/native/.libs" -Xbootclasspath/p:alpn.jar -cp "undertow-examples.jar:$TCN2/dist/tomcat-native-1.2.5.jar" io.undertow.examples.openssl.OpenSSLServer
 ```
-
