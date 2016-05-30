@@ -34,11 +34,11 @@ echo export JAVA_TOOL_OPTIONS="-Djava.library.path=$TCN2/native/.libs/" >> bin/s
 ### Run tests
 * Set test.sslImplementation property: 
 ```
-echo test.sslImplementation=org.apache.tomcat.util.net.openssl.OpenSSLImplementation >> build.properties`
+echo test.sslImplementation=org.apache.tomcat.util.net.openssl.OpenSSLImplementation >> build.properties
 ```
 * Create symlinks to tomcat-native shared objects: 
 ```
-mkdir -p bin/native && ln -s "$TCN2"/native/.libs/* bin/native/`
+mkdir -p bin/native && ln -s "$TCN2"/native/.libs/* bin/native/
 ```
 * Run tests: `LANG=C ant test`
 
