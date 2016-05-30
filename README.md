@@ -1,3 +1,5 @@
+
+
 # Tomcat Native 2
 
 Fork of the apache Tomcat Native project focused on keeping the OpenSSL engine while removing the APR dependency.
@@ -30,8 +32,14 @@ echo export JAVA_TOOL_OPTIONS="-Djava.library.path=$TCN2/native/.libs/" >> bin/s
 * Run server: `output/build/catalina.sh run`
 
 ### Run tests
-* Set test.sslImplementation property: `echo test.sslImplementation=org.apache.tomcat.util.net.openssl.OpenSSLImplementation >> build.properties`
-* Create symlinks to tomcat-native shared objects: `mkdir -p bin/native && ln -s "$TCN2"/native/.libs/* bin/native/`
+* Set test.sslImplementation property: 
+```
+echo test.sslImplementation=org.apache.tomcat.util.net.openssl.OpenSSLImplementation >> build.properties`
+```
+* Create symlinks to tomcat-native shared objects: 
+```
+mkdir -p bin/native && ln -s "$TCN2"/native/.libs/* bin/native/`
+```
 * Run tests: `LANG=C ant test`
 
 Quick and ugly hack to only run tests related to ssl:
@@ -50,3 +58,4 @@ Now run the HTTP2 OpenSSL Server example:
 cd examples/target
 java "-Djava.library.path=$TCN2/native/.libs" -Xbootclasspath/p:alpn.jar -cp "undertow-examples.jar:$TCN2/dist/tomcat-native-1.2.5.jar" io.undertow.examples.openssl.OpenSSLServer
 ```
+
