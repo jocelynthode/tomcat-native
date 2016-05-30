@@ -971,7 +971,7 @@ TCN_IMPLEMENT_CALL(jint, SSL, isInInit)(TCN_STDARGS,
         throwIllegalArgumentException(e, "ssl is null");
         return 0;
     } else {
-        return (SSL_state(ssl_) & SSL_ST_INIT) || SSL_renegotiate_pending(ssl_);
+        return SSL_in_init(ssl_) || SSL_renegotiate_pending(ssl_);
     }
 }
 
@@ -1227,7 +1227,7 @@ TCN_IMPLEMENT_CALL(void, SSL, clearOptions)(TCN_STDARGS, jlong ssl,
 
     UNREFERENCED_STDARGS;
     TCN_ASSERT(ctx != 0);
-    SSL_ctrl(c,SSL_CTRL_CLEAR_OPTIONS,(opt),NULL);
+    SSL_clear_options(c, opt);
 }
 
 

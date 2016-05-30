@@ -32,8 +32,11 @@
 #define TCN_DO_STATISTICS
 #endif
 #endif
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #if defined(_WIN32) && !defined(__CYGWIN__)
 #include <process.h>
 #else
