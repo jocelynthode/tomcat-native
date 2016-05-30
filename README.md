@@ -44,7 +44,7 @@ mkdir -p bin/native && ln -s "$TCN2"/native/.libs/* bin/native/
 
 Quick and ugly hack to only run tests related to ssl:
 ```
-find test/org/apache/tomcat/util/net/ -iname "test*.java" -a ! -iname 'tester*.java' | sed s@/@\.@g | sed 's/^test.//g' | sed 's/.java$//g' | xargs -I%s env LANG=C ant -Dtest.entry=%s
+find test/org/apache/tomcat/util/net/ -iname "test*.java" -a ! -iname 'tester*.java' | sed s@/@\.@g | sed 's/^test.//g' | sed 's/.java$//g' | xargs -I%s env LANG=C ant test -Dtest.entry=%s
 ```
 
 ## How to use in Undertow
