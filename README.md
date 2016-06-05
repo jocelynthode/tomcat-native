@@ -16,14 +16,14 @@ Then build the native shared object:
 ## How to use in Tomcat
 * Set the TCN2 shell variable to the absolute path of the Tomcat Native repository : `TCN2=path/to/tomcat-native`
 * Clone our fork of Tomcat and cd into it: `git clone https://github.com/jocelynthode/tomcat.git && cd tomcat && git checkout TCN2_UNDERCAT`
-* Set the tcn2.jar property in the build.properties: `echo  "tcn2.jar=$TCN2/dist/tomcat-native-1.2.5.jar" >> build.properties`
+* Set the tcn2.jar property in the build.properties: `echo  "tcn2.jar=$TCN2/dist/tomcat-native-1.2.8.jar" >> build.properties`
 * Build tomcat: `ant`
 
 ### Run server with example config
 * Apply sample config with OpenSSL, H2 and SNI: `git cherry-pick -n origin/tmp_conf`
 * Add tomcat-native paths to startup scripts:
 ```
-echo CLASSPATH="$TCN2/dist/tomcat-native-1.2.5.jar" >> bin/setenv.sh
+echo CLASSPATH="$TCN2/dist/tomcat-native-1.2.8.jar" >> bin/setenv.sh
 echo export JAVA_TOOL_OPTIONS="-Djava.library.path=$TCN2/native/.libs/" >> bin/setenv.sh
 ```
 
@@ -32,11 +32,11 @@ echo export JAVA_TOOL_OPTIONS="-Djava.library.path=$TCN2/native/.libs/" >> bin/s
 * Run server: `output/build/catalina.sh run`
 
 ### Run tests
-* Set test.sslImplementation property: 
+* Set test.sslImplementation property:
 ```
 echo test.sslImplementation=org.apache.tomcat.util.net.openssl.OpenSSLImplementation >> build.properties
 ```
-* Create symlinks to tomcat-native shared objects: 
+* Create symlinks to tomcat-native shared objects:
 ```
 mkdir -p bin/native && ln -s "$TCN2"/native/.libs/* bin/native/
 ```
@@ -56,6 +56,5 @@ find test/org/apache/tomcat/util/net/ -iname "test*.java" -a ! -iname 'tester*.j
 Now run the HTTP2 OpenSSL Server example:
 ```
 cd examples/target
-java "-Djava.library.path=$TCN2/native/.libs" -Xbootclasspath/p:alpn.jar -cp "undertow-examples.jar:$TCN2/dist/tomcat-native-1.2.5.jar" io.undertow.examples.openssl.OpenSSLServer
+java "-Djava.library.path=$TCN2/native/.libs" -Xbootclasspath/p:alpn.jar -cp "undertow-examples.jar:$TCN2/dist/tomcat-native-1.2.8.jar" io.undertow.examples.openssl.OpenSSLServer
 ```
-
