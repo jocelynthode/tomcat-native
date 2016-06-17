@@ -29,7 +29,7 @@ echo export JAVA_TOOL_OPTIONS="-Djava.library.path=$TCN2/native/.libs/" >> bin/s
 
 * Run ant to copy some config files: `ant`
 * Copy keys and certificates: `rsync -rv conf/ output/build/conf/`
-* Run server: `output/build/catalina.sh run`
+* Run server: `output/build/bin/catalina.sh run`
 
 ### Run tests
 * Set test.sslImplementation property: 
