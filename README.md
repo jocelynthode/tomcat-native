@@ -15,7 +15,7 @@ Then build the native shared object:
 
 ## How to use in Tomcat
 * Set the TCN2 shell variable to the absolute path of the Tomcat Native repository : `TCN2=path/to/tomcat-native`
-* Clone our fork of Tomcat and cd into it: `git clone https://github.com/jocelynthode/tomcat.git && cd tomcat && git checkout TCN2_UNDERCAT`
+* Clone our fork of Tomcat and cd into it: `git clone https://github.com/jocelynthode/tomcat.git && cd tomcat && git checkout undercat_trunk`
 * Set the tcn2.jar property in the build.properties: `echo  "tcn2.jar=$TCN2/dist/tomcat-native-1.2.8.jar" >> build.properties`
 * Build tomcat: `ant`
 
