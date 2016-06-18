@@ -50,7 +50,7 @@ find test/org/apache/tomcat/util/net/ -iname "test*.java" -a ! -iname 'tester*.j
 ## How to use in Undertow
 * Set the TCN2 shell variable to the absolute path of the Tomcat Native repository : `TCN2=path/to/tomcat-native`
 * Clone our fork of Undertow and cd into it: `git clone https://github.com/jocelynthode/undertow.git && cd undertow && git checkout undercat_trunk`
-* Install tcn2 jar into maven local repository: `./deps.sh "$TCN2"`
+* Install tcn2 jar into maven local repository: `./dep.sh "$TCN2"`
 * Build Undertow: `mvn package -DskipTests -Dcheckstyle.skip`
 
 Now run the HTTP2 OpenSSL Server example:
