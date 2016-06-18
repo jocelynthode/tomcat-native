@@ -24,7 +24,7 @@ Then build the native shared object:
 * Add tomcat-native paths to startup scripts:
 ```
 echo CLASSPATH="$TCN2/dist/tomcat-native-1.2.8.jar" >> bin/setenv.sh
-echo export JAVA_TOOL_OPTIONS="-Djava.library.path=$TCN2/native/.libs/" >> bin/setenv.sh
+echo export CATALINA_OPTS="$CATALINA_OPTS -Djava.library.path=$TCN2/native/.libs/" >> bin/setenv.sh
 ```
 
 * Run ant to copy some config files: `ant`
